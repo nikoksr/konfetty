@@ -1,0 +1,38 @@
+version: "3"
+
+env:
+  GO111MODULE: "on"
+  GOPROXY: "https://proxy.golang.org,direct"
+
+tasks:
+  setup:
+    desc: Setup dev environment
+    cmds:
+      - go mod tidy
+
+  build:lib:
+    desc: Build the konfetty library
+    cmds:
+      - go build ./...
+    silent: true
+
+  fmt:
+    desc: Format the code
+    cmds:
+      - golines --shorten-comments -m 120 -w .
+      - gofumpt -w -l .
+      - gci write -s standard -s default -s "prefix(github.com/nikoksr/konfetty)" .
+
+  lint:
+    desc: Lint the code with golangci-lint
+    cmds:
+      - golangci-lint run ./...
+
+  help:
+    desc: Show help
+    cmds:
+      - task --list
+
+  default:
+    cmds:
+      - echo "{{.GREETING}}"
