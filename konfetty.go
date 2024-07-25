@@ -20,8 +20,6 @@ const (
 	YAML FileFormat = iota
 	JSON
 	TOML
-
-	defaultStructTag = "konfetty"
 )
 
 type LoaderConfig struct {
@@ -29,6 +27,7 @@ type LoaderConfig struct {
 	EnvPrefix      string
 	FileFormat     FileFormat
 	StructTag      string
+	MaxDepth       int
 }
 
 // Loader is the main interface for loading and validating configurations.
@@ -53,8 +52,9 @@ func NewLoader[T any](options ...Option[T]) Loader[T] {
 	l := &loader[T]{
 		config: LoaderConfig{
 			KoanfDelimiter: ".",
-			StructTag:      defaultStructTag,
+			StructTag:      "konfetty",
 			FileFormat:     YAML,
+			MaxDepth:       100,
 		},
 	}
 
@@ -91,6 +91,12 @@ func WithKoanfSetup[T any](fn func(*koanf.Koanf) error) Option[T] {
 	}
 }
 
+func WithKoanfDelimiter[T any](delimiter string) Option[T] {
+	return func(l *loader[T]) {
+		l.config.KoanfDelimiter = delimiter
+	}
+}
+
 func WithEnvPrefix[T any](prefix string) Option[T] {
 	return func(l *loader[T]) {
 		l.config.EnvPrefix = prefix
@@ -109,9 +115,9 @@ func WithStructTag[T any](tag string) Option[T] {
 	}
 }
 
-func WithKoanfDelimiter[T any](delimiter string) Option[T] {
+func WithMaxDepth[T any](depth int) Option[T] {
 	return func(l *loader[T]) {
-		l.config.KoanfDelimiter = delimiter
+		l.config.MaxDepth = depth
 	}
 }
 
@@ -154,6 +160,11 @@ func (l *loader[T]) Load(paths ...string) (*T, error) {
 	}
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal: %w", err)
+	}
+
+	// Apply defaults
+	if err := fillDefaults(cfg, l.config.MaxDepth); err != nil {
+		return nil, fmt.Errorf("fill defaults: %w", err)
 	}
 
 	// Transform

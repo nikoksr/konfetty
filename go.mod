@@ -3,7 +3,6 @@ module github.com/nikoksr/konfetty
 go 1.22.5
 
 require (
-	github.com/google/go-cmp v0.6.0
 	github.com/knadh/koanf/parsers/yaml v0.1.0
 	github.com/knadh/koanf/providers/env v0.1.0
 	github.com/knadh/koanf/providers/file v1.0.0

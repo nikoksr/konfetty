@@ -10,12 +10,6 @@ tasks:
     cmds:
       - go mod tidy
 
-  build:
-    desc: Build the konfetty library
-    cmds:
-      - go build ./...
-    silent: true
-
   fmt:
     desc: Format the code
     cmds:
@@ -27,6 +21,23 @@ tasks:
     desc: Lint the code with golangci-lint
     cmds:
       - golangci-lint run ./...
+
+  test:
+    desc: Run tests
+    cmds:
+      - go build ./...
+      - go test -failfast -race ./...
+
+  gen-coverage:
+    desc: Generate coverage report
+    cmds:
+      - go test -race -covermode=atomic -coverprofile=coverage.out ./... > /dev/null
+
+  coverage-html:
+    desc: Generate coverage report and open it in the browser
+    cmds:
+      - task gen-coverage
+      - go tool cover -html=coverage.out -o cover.html
 
   help:
     desc: Show help
