@@ -3,10 +3,18 @@ module github.com/nikoksr/konfetty
 go 1.22.5
 
 require (
+	github.com/google/go-cmp v0.6.0
 	github.com/knadh/koanf/parsers/yaml v0.1.0
 	github.com/knadh/koanf/providers/env v0.1.0
 	github.com/knadh/koanf/providers/file v1.0.0
 	github.com/knadh/koanf/v2 v2.1.1
+	github.com/stretchr/testify v1.9.0
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 )
 
 require (
@@ -22,6 +30,7 @@ require (
 )
 
 require (
-	dario.cat/mergo v1.0.0
+	github.com/knadh/koanf/parsers/json v0.1.0
+	github.com/knadh/koanf/parsers/toml/v2 v2.1.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

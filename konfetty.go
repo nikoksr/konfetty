@@ -1,16 +1,28 @@
 package konfetty
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
-	"dario.cat/mergo"
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/knadh/koanf/parsers/json"
+	"github.com/knadh/koanf/parsers/toml/v2"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 )
+
+type FileFormat uint8
+
+const (
+	FileFormatYAML FileFormat = iota
+	FileFormatJSON
+	FileFormatTOML
+)
+
+const defaultStructTag = "konfetty"
 
 // Loader is the main interface for loading and validating configurations.
 type Loader[T any] interface {
@@ -25,16 +37,20 @@ type Option[T any] func(*loader[T])
 type loader[T any] struct {
 	k          *koanf.Koanf
 	envPrefix  string
-	fileFormat string
+	fileFormat FileFormat
+	structTag  string
 	validateFn func(*T) error
-	defaultsFn func() T
 }
 
 // NewLoader creates a new configuration loader.
 func NewLoader[T any](options ...Option[T]) Loader[T] {
 	l := &loader[T]{
-		k:          koanf.New("."),
-		fileFormat: "yaml", // default to YAML
+		k: koanf.NewWithConf(koanf.Conf{
+			Delim:       ".",
+			StrictMerge: true,
+		}),
+		fileFormat: FileFormatYAML, // default to YAML
+		structTag:  defaultStructTag,
 	}
 
 	for _, option := range options {
@@ -52,9 +68,16 @@ func WithEnvPrefix[T any](prefix string) Option[T] {
 }
 
 // WithFileFormat sets the format for configuration files.
-func WithFileFormat[T any](format string) Option[T] {
+func WithFileFormat[T any](format FileFormat) Option[T] {
 	return func(l *loader[T]) {
 		l.fileFormat = format
+	}
+}
+
+// WithStructTag sets the struct tag for configuration fields.
+func WithStructTag[T any](tag string) Option[T] {
+	return func(l *loader[T]) {
+		l.structTag = tag
 	}
 }
 
@@ -62,13 +85,6 @@ func WithFileFormat[T any](format string) Option[T] {
 func WithValidator[T any](fn func(*T) error) Option[T] {
 	return func(l *loader[T]) {
 		l.validateFn = fn
-	}
-}
-
-// WithDefaults sets a function to provide default values.
-func WithDefaults[T any](fn func() T) Option[T] {
-	return func(l *loader[T]) {
-		l.defaultsFn = fn
 	}
 }
 
@@ -89,25 +105,27 @@ func (l *loader[T]) Load(paths ...string) (*T, error) {
 	}
 
 	// Unmarshal into the config struct
+	decodeHook := mapstructure.ComposeDecodeHookFunc(
+		mapstructure.StringToTimeDurationHookFunc(), // Convert strings to time.Duration
+		mapstructure.StringToSliceHookFunc(","),     // Convert comma-separated strings to slices
+	)
+
 	if err := l.k.UnmarshalWithConf("", &cfg, koanf.UnmarshalConf{
+		Tag: l.structTag,
 		DecoderConfig: &mapstructure.DecoderConfig{
 			Result:           &cfg,
 			WeaklyTypedInput: true,
-			DecodeHook: mapstructure.ComposeDecodeHookFunc(
-				mapstructure.StringToTimeDurationHookFunc(),
-				mapstructure.StringToSliceHookFunc(","),
-			),
+			Squash:           true,
+			TagName:          l.structTag,
+			DecodeHook:       decodeHook,
 		},
 	}); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 
-	// Merge with defaults
-	if l.defaultsFn != nil {
-		defaults := l.defaultsFn()
-		if err := mergo.Merge(&cfg, defaults); err != nil {
-			return nil, fmt.Errorf("merge defaults: %w", err)
-		}
+	// Apply defaults
+	if err := fillDefaults(&cfg); err != nil {
+		return nil, fmt.Errorf("fill defaults: %w", err)
 	}
 
 	// Validate
@@ -123,11 +141,14 @@ func (l *loader[T]) loadFile(path string) error {
 	var parser koanf.Parser
 
 	switch l.fileFormat {
-	case "yaml":
+	case FileFormatYAML:
 		parser = yaml.Parser()
-	// Add more formats here as needed
+	case FileFormatJSON:
+		parser = json.Parser()
+	case FileFormatTOML:
+		parser = toml.Parser()
 	default:
-		return fmt.Errorf("unsupported file format: %s", l.fileFormat)
+		return errors.New("unsupported file format")
 	}
 
 	if err := l.k.Load(file.Provider(path), parser); err != nil {

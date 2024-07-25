@@ -10,7 +10,7 @@ tasks:
     cmds:
       - go mod tidy
 
-  build:lib:
+  build:
     desc: Build the konfetty library
     cmds:
       - go build ./...
