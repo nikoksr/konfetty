@@ -5,19 +5,26 @@ import (
 	"reflect"
 )
 
+// maxDepth defines the maximum recursion depth for filling defaults.
+// This prevents infinite recursion in case of circular dependencies.
 const maxDepth = 100 // Adjust this value as needed
 
-// DefaultProvider is an interface for types that can provide their own default values
+// DefaultProvider is an interface for types that can provide their own default values.
+// Structs implementing this interface can define a Defaults method to return default values.
 type DefaultProvider interface {
 	Defaults() any
 }
 
-// fillDefaults recursively fills in default values for structs that implement DefaultProvider
+// fillDefaults recursively fills in default values for structs that implement DefaultProvider.
+// It traverses the struct hierarchy and applies defaults to fields and nested structs.
 func fillDefaults(v any, maxDepth int) error {
 	return fillDefaultsRecursive(reflect.ValueOf(v), 0, maxDepth)
 }
 
+// fillDefaultsRecursive is the core function that recursively fills default values.
+// It handles various types including pointers, structs, slices, and maps.
 func fillDefaultsRecursive(v reflect.Value, depth, maxDepth int) error {
+	// Check if maximum recursion depth is reached
 	if depth > maxDepth {
 		return errors.New("maximum recursion depth exceeded, possible circular dependency")
 	}
@@ -35,13 +42,14 @@ func fillDefaultsRecursive(v reflect.Value, depth, maxDepth int) error {
 		v = v.Elem()
 	}
 
+	// Only process struct types
 	if v.Kind() != reflect.Struct {
 		return nil
 	}
 
 	t := v.Type()
 
-	// Iterate through all fields
+	// Iterate through all fields of the struct
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		fieldType := t.Field(i)
@@ -78,6 +86,7 @@ func fillDefaultsRecursive(v reflect.Value, depth, maxDepth int) error {
 			continue
 		}
 
+		// Handle different field types
 		switch field.Kind() {
 		case reflect.Ptr:
 			if field.IsNil() {
@@ -102,7 +111,7 @@ func fillDefaultsRecursive(v reflect.Value, depth, maxDepth int) error {
 				}
 			}
 		case reflect.Map:
-			// Handle maps (new addition)
+			// Handle maps
 			for _, key := range field.MapKeys() {
 				value := field.MapIndex(key)
 				if value.CanAddr() {
@@ -127,6 +136,8 @@ func fillDefaultsRecursive(v reflect.Value, depth, maxDepth int) error {
 	return nil
 }
 
+// fillFromDefaults copies default values from the source to the destination struct.
+// It only sets values for fields that are zero-valued in the destination.
 func fillFromDefaults(dst, src reflect.Value) {
 	for i := 0; i < src.NumField(); i++ {
 		srcField := src.Field(i)
@@ -143,12 +154,14 @@ func fillFromDefaults(dst, src reflect.Value) {
 			continue // Skip if types are not compatible
 		}
 
+		// Only set the default value if the destination field is zero-valued
 		if isZeroValue(dstField) {
 			dstField.Set(srcField)
 		}
 	}
 }
 
+// isZeroValue checks if the given reflect.Value is the zero value for its type.
 func isZeroValue(v reflect.Value) bool {
 	zero := reflect.Zero(v.Type()).Interface()
 	return reflect.DeepEqual(v.Interface(), zero)
