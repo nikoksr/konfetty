@@ -14,156 +14,201 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
-type FileFormat uint8
+type FileFormat int
 
 const (
-	FileFormatYAML FileFormat = iota
-	FileFormatJSON
-	FileFormatTOML
+	YAML FileFormat = iota
+	JSON
+	TOML
+
+	defaultStructTag = "konfetty"
 )
 
-const defaultStructTag = "konfetty"
+type LoaderConfig struct {
+	KoanfDelimiter string
+	EnvPrefix      string
+	FileFormat     FileFormat
+	StructTag      string
+}
 
 // Loader is the main interface for loading and validating configurations.
 type Loader[T any] interface {
 	Load(paths ...string) (*T, error)
 	Validate(cfg *T) error
+	Transform(cfg *T) error
 }
 
-// Option is a function type for configuring the loader.
+type loader[T any] struct {
+	k            *koanf.Koanf
+	config       LoaderConfig
+	validateFn   func(*T) error
+	transformFn  func(*T) error
+	unmarshalFn  func(interface{}) (*T, error)
+	koanfSetupFn func(*koanf.Koanf) error
+}
+
 type Option[T any] func(*loader[T])
 
-// loader is the internal implementation of ConfigLoader.
-type loader[T any] struct {
-	k          *koanf.Koanf
-	envPrefix  string
-	fileFormat FileFormat
-	structTag  string
-	validateFn func(*T) error
-}
-
-// NewLoader creates a new configuration loader.
 func NewLoader[T any](options ...Option[T]) Loader[T] {
 	l := &loader[T]{
-		k: koanf.NewWithConf(koanf.Conf{
-			Delim:       ".",
-			StrictMerge: true,
-		}),
-		fileFormat: FileFormatYAML, // default to YAML
-		structTag:  defaultStructTag,
+		config: LoaderConfig{
+			KoanfDelimiter: ".",
+			StructTag:      defaultStructTag,
+			FileFormat:     YAML,
+		},
 	}
 
 	for _, option := range options {
 		option(l)
 	}
 
+	l.k = koanf.New(l.config.KoanfDelimiter)
+
 	return l
 }
 
-// WithEnvPrefix sets the prefix for environment variables.
-func WithEnvPrefix[T any](prefix string) Option[T] {
-	return func(l *loader[T]) {
-		l.envPrefix = prefix
-	}
-}
-
-// WithFileFormat sets the format for configuration files.
-func WithFileFormat[T any](format FileFormat) Option[T] {
-	return func(l *loader[T]) {
-		l.fileFormat = format
-	}
-}
-
-// WithStructTag sets the struct tag for configuration fields.
-func WithStructTag[T any](tag string) Option[T] {
-	return func(l *loader[T]) {
-		l.structTag = tag
-	}
-}
-
-// WithValidator sets a custom validation function.
 func WithValidator[T any](fn func(*T) error) Option[T] {
 	return func(l *loader[T]) {
 		l.validateFn = fn
 	}
 }
 
+func WithTransformer[T any](fn func(*T) error) Option[T] {
+	return func(l *loader[T]) {
+		l.transformFn = fn
+	}
+}
+
+func WithUnmarshal[T any](fn func(interface{}) (*T, error)) Option[T] {
+	return func(l *loader[T]) {
+		l.unmarshalFn = fn
+	}
+}
+
+func WithKoanfSetup[T any](fn func(*koanf.Koanf) error) Option[T] {
+	return func(l *loader[T]) {
+		l.koanfSetupFn = fn
+	}
+}
+
+func WithEnvPrefix[T any](prefix string) Option[T] {
+	return func(l *loader[T]) {
+		l.config.EnvPrefix = prefix
+	}
+}
+
+func WithFileFormat[T any](format FileFormat) Option[T] {
+	return func(l *loader[T]) {
+		l.config.FileFormat = format
+	}
+}
+
+func WithStructTag[T any](tag string) Option[T] {
+	return func(l *loader[T]) {
+		l.config.StructTag = tag
+	}
+}
+
+func WithKoanfDelimiter[T any](delimiter string) Option[T] {
+	return func(l *loader[T]) {
+		l.config.KoanfDelimiter = delimiter
+	}
+}
+
 // Load implements the ConfigLoader interface.
 func (l *loader[T]) Load(paths ...string) (*T, error) {
-	var cfg T
-
-	// Load from files
-	for _, path := range paths {
-		if err := l.loadFile(path); err != nil {
-			return nil, fmt.Errorf("read from file: %w", err)
+	// Apply custom koanf setup if provided
+	if l.koanfSetupFn != nil {
+		if err := l.koanfSetupFn(l.k); err != nil {
+			return nil, fmt.Errorf("koanf setup: %w", err)
+		}
+	} else {
+		// Default setup
+		if err := l.defaultKoanfSetup(paths); err != nil {
+			return nil, fmt.Errorf("default koanf setup: %w", err)
 		}
 	}
 
-	// Load from environment variables
-	if err := l.loadEnv(); err != nil {
-		return nil, fmt.Errorf("read from environment: %w", err)
+	// Unmarshal
+	var cfg *T
+	var err error
+	if l.unmarshalFn != nil {
+		cfg, err = l.unmarshalFn(l.k.Raw())
+	} else {
+		cfg = new(T)
+		decodeHook := mapstructure.ComposeDecodeHookFunc(
+			mapstructure.StringToTimeDurationHookFunc(), // Convert strings to time.Duration
+			mapstructure.StringToSliceHookFunc(","),     // Convert comma-separated strings to slices
+		)
+
+		err = l.k.UnmarshalWithConf("", &cfg, koanf.UnmarshalConf{
+			Tag: l.config.StructTag,
+			DecoderConfig: &mapstructure.DecoderConfig{
+				Result:           &cfg,
+				WeaklyTypedInput: true,
+				Squash:           true,
+				TagName:          l.config.StructTag,
+				DecodeHook:       decodeHook,
+			},
+		})
+	}
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
 
-	// Unmarshal into the config struct
-	decodeHook := mapstructure.ComposeDecodeHookFunc(
-		mapstructure.StringToTimeDurationHookFunc(), // Convert strings to time.Duration
-		mapstructure.StringToSliceHookFunc(","),     // Convert comma-separated strings to slices
-	)
-
-	if err := l.k.UnmarshalWithConf("", &cfg, koanf.UnmarshalConf{
-		Tag: l.structTag,
-		DecoderConfig: &mapstructure.DecoderConfig{
-			Result:           &cfg,
-			WeaklyTypedInput: true,
-			Squash:           true,
-			TagName:          l.structTag,
-			DecodeHook:       decodeHook,
-		},
-	}); err != nil {
-		return nil, fmt.Errorf("unmarshal config: %w", err)
-	}
-
-	// Apply defaults
-	if err := fillDefaults(&cfg); err != nil {
-		return nil, fmt.Errorf("fill defaults: %w", err)
+	// Transform
+	if l.transformFn != nil {
+		if err := l.transformFn(cfg); err != nil {
+			return nil, fmt.Errorf("transform: %w", err)
+		}
 	}
 
 	// Validate
-	if err := l.Validate(&cfg); err != nil {
-		return nil, fmt.Errorf("validate: %w", err)
+	if l.validateFn != nil {
+		if err := l.validateFn(cfg); err != nil {
+			return nil, fmt.Errorf("validate: %w", err)
+		}
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
-// loadFile loads configuration from a file.
-func (l *loader[T]) loadFile(path string) error {
+func (l *loader[T]) defaultKoanfSetup(paths []string) error {
 	var parser koanf.Parser
-
-	switch l.fileFormat {
-	case FileFormatYAML:
+	switch l.config.FileFormat {
+	case YAML:
 		parser = yaml.Parser()
-	case FileFormatJSON:
+	case JSON:
 		parser = json.Parser()
-	case FileFormatTOML:
+	case TOML:
 		parser = toml.Parser()
 	default:
 		return errors.New("unsupported file format")
 	}
 
-	if err := l.k.Load(file.Provider(path), parser); err != nil {
-		return err
+	for _, path := range paths {
+		if err := l.k.Load(file.Provider(path), parser); err != nil {
+			return fmt.Errorf("load file %s: %w", path, err)
+		}
+	}
+
+	if l.config.EnvPrefix != "" {
+		if err := l.k.Load(env.Provider(l.config.EnvPrefix, l.config.KoanfDelimiter, func(s string) string {
+			return strings.Replace(strings.ToLower(strings.TrimPrefix(s, l.config.EnvPrefix)), "_", l.config.KoanfDelimiter, -1)
+		}), nil); err != nil {
+			return fmt.Errorf("load env vars: %w", err)
+		}
 	}
 
 	return nil
 }
 
-// loadEnv loads configuration from environment variables.
-func (l *loader[T]) loadEnv() error {
-	return l.k.Load(env.Provider(l.envPrefix, ".", func(s string) string {
-		return strings.ReplaceAll(strings.ToLower(
-			strings.TrimPrefix(s, l.envPrefix)), "_", ".")
-	}), nil)
+// Transform implements the ConfigLoader interface.
+func (l *loader[T]) Transform(cfg *T) error {
+	if l.transformFn != nil {
+		return l.transformFn(cfg)
+	}
+	return nil
 }
 
 // Validate implements the ConfigLoader interface.
@@ -173,14 +218,4 @@ func (l *loader[T]) Validate(cfg *T) error {
 	}
 
 	return nil
-}
-
-// MustLoad is a helper function that panics on error.
-func MustLoad[T any](loader Loader[T], paths ...string) *T {
-	cfg, err := loader.Load(paths...)
-	if err != nil {
-		panic(err)
-	}
-
-	return cfg
 }

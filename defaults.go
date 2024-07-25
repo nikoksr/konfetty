@@ -7,11 +7,6 @@ type DefaultProvider interface {
 	Defaults() any
 }
 
-// Defaulter is an interface for types that can set their own default values
-type Defaulter interface {
-	SetDefaults()
-}
-
 // fillDefaults recursively fills in default values for structs that implement DefaultProvider
 func fillDefaults(v any) error {
 	return fillDefaultsRecursive(reflect.ValueOf(v))
