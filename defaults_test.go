@@ -16,45 +16,79 @@ type BaseCheck struct {
 	Timeout  time.Duration
 }
 
-// Defaults provides default values for BaseCheck
 func (b BaseCheck) Defaults() any {
 	return BaseCheck{
+		// This should take the lowest priority, filling the missing fields
 		Interval: 30 * time.Second,
 		Timeout:  5 * time.Second,
 	}
 }
 
-// PingCheck represents a ping check configuration
 type PingCheck struct {
 	*BaseCheck
 	Host string
 }
 
-// HTTPCheck represents an HTTP check configuration
+func (b PingCheck) Defaults() any {
+	return PingCheck{
+		BaseCheck: &BaseCheck{
+			Interval: 1 * time.Second, // This should take the second highest priority, filling the missing fields
+		},
+	}
+}
+
 type HTTPCheck struct {
 	*BaseCheck
 	URL    string
 	Method string
 }
 
-// Defaults provides default values for HTTPCheck
 func (h HTTPCheck) Defaults() any {
 	return HTTPCheck{
-		BaseCheck: &BaseCheck{},
-		Method:    "GET",
+		Method: "GET",
 	}
 }
 
-// Checks represents a collection of various checks
 type Checks struct {
 	Ping []PingCheck
 	HTTP []HTTPCheck
 }
 
-// Profile represents the main configuration profile
 type Profile struct {
 	Name   string
 	Checks Checks
+}
+
+func TestProfileWithChecks(t *testing.T) {
+	t.Run("Fill Profile with default values", func(t *testing.T) {
+		profile := &Profile{
+			Checks: Checks{
+				Ping: []PingCheck{
+					{
+						BaseCheck: &BaseCheck{Name: "Custom Ping"}, // This should take the highest priority, but, the BaseCheck has not all fields filled
+						Host:      "example.com",
+					},
+					{
+						Host: "google.com",
+					},
+				},
+			},
+		}
+
+		fillDefaults(profile)
+
+		require.Len(t, profile.Checks.Ping, 2)
+
+		assert.Equal(t, "Custom Ping", profile.Checks.Ping[0].Name)
+		assert.Equal(t, 1*time.Second, profile.Checks.Ping[0].Interval)
+		assert.Equal(t, 5*time.Second, profile.Checks.Ping[0].Timeout)
+		assert.Equal(t, "example.com", profile.Checks.Ping[0].Host)
+
+		assert.Equal(t, "", profile.Checks.Ping[1].Name)
+		assert.Equal(t, 1*time.Second, profile.Checks.Ping[1].Interval) // This is expected to be 1 second, due to the order of priority. If, say, PingCheck.Defaults would not set Interval, it would be 30 seconds due to BaseCheck.Defaults
+		assert.Equal(t, 5*time.Second, profile.Checks.Ping[1].Timeout)
+		assert.Equal(t, "google.com", profile.Checks.Ping[1].Host)
+	})
 }
 
 type NestedConfig struct {
@@ -89,7 +123,6 @@ func (e ErrorStruct) Defaults() any {
 
 func TestFillDefaults(t *testing.T) {
 	t.Run("Fill Profile with default values", func(t *testing.T) {
-		// Arrange
 		profile := &Profile{
 			Checks: Checks{
 				Ping: []PingCheck{
@@ -107,31 +140,28 @@ func TestFillDefaults(t *testing.T) {
 						URL:       "https://api.example.com",
 					},
 					{
-						URL: "https://api.google.com",
+						BaseCheck: &BaseCheck{},
+						URL:       "https://api.google.com",
 					},
 				},
 			},
 		}
 
-		// Act
-		err := fillDefaults(profile, maxDepth)
+		// Regular tests continue...
 
-		// Assert
-		require.NoError(t, err)
+		fillDefaults(profile)
 
-		// Check Ping defaults
 		require.Len(t, profile.Checks.Ping, 2)
 		assert.Equal(t, "Custom Ping", profile.Checks.Ping[0].Name)
-		assert.Equal(t, 30*time.Second, profile.Checks.Ping[0].Interval)
+		assert.Equal(t, 1*time.Second, profile.Checks.Ping[0].Interval)
 		assert.Equal(t, 5*time.Second, profile.Checks.Ping[0].Timeout)
 		assert.Equal(t, "example.com", profile.Checks.Ping[0].Host)
 
 		assert.Equal(t, "", profile.Checks.Ping[1].Name)
-		assert.Equal(t, 30*time.Second, profile.Checks.Ping[1].Interval)
+		assert.Equal(t, 1*time.Second, profile.Checks.Ping[1].Interval)
 		assert.Equal(t, 5*time.Second, profile.Checks.Ping[1].Timeout)
 		assert.Equal(t, "google.com", profile.Checks.Ping[1].Host)
 
-		// Check HTTP defaults
 		require.Len(t, profile.Checks.HTTP, 2)
 		assert.Equal(t, "Custom HTTP", profile.Checks.HTTP[0].Name)
 		assert.Equal(t, 30*time.Second, profile.Checks.HTTP[0].Interval)
@@ -147,19 +177,12 @@ func TestFillDefaults(t *testing.T) {
 	})
 
 	t.Run("Fill nested structs with default values", func(t *testing.T) {
-		// Arrange
 		outer := &OuterConfig{}
-
-		// Act
-		err := fillDefaults(outer, maxDepth)
-
-		// Assert
-		require.NoError(t, err)
+		fillDefaults(outer)
 		assert.Equal(t, 42, outer.Nested.Value)
 	})
 
 	t.Run("Handle nil pointers", func(t *testing.T) {
-		// Arrange
 		profile := &Profile{
 			Checks: Checks{
 				Ping: []PingCheck{
@@ -175,103 +198,40 @@ func TestFillDefaults(t *testing.T) {
 			},
 		}
 
-		// Act
-		err := fillDefaults(profile, maxDepth)
-
-		// Assert
-		require.NoError(t, err)
+		fillDefaults(profile)
 		require.NotNil(t, profile.Checks.Ping[0].BaseCheck)
 		require.NotNil(t, profile.Checks.HTTP[0].BaseCheck)
 	})
 
-	t.Run("Max depth exceeded", func(t *testing.T) {
-		// Arrange
-		type RecursiveStruct struct {
-			Next *RecursiveStruct
-		}
-
-		cfg := &RecursiveStruct{}
-		current := cfg
-		for i := 0; i < maxDepth+1; i++ {
-			current.Next = &RecursiveStruct{}
-			current = current.Next
-		}
-
-		// Act
-		err := fillDefaults(cfg, maxDepth)
-
-		// Assert
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "maximum recursion depth exceeded")
-	})
-
 	t.Run("Non-struct type", func(t *testing.T) {
-		// Arrange
 		value := 42
-
-		// Act
-		err := fillDefaults(&value, maxDepth)
-
-		// Assert
-		require.NoError(t, err)
+		fillDefaults(&value)
 		assert.Equal(t, 42, value)
 	})
 
 	t.Run("Empty struct", func(t *testing.T) {
-		// Arrange
 		emptyStruct := struct{}{}
-
-		// Act
-		err := fillDefaults(&emptyStruct, maxDepth)
-
-		// Assert
-		require.NoError(t, err)
-		// Empty struct should remain unchanged
+		fillDefaults(&emptyStruct)
 		assert.Equal(t, struct{}{}, emptyStruct)
 	})
 
 	t.Run("Struct with unexported fields", func(t *testing.T) {
-		// Arrange
 		type unexportedStruct struct {
 			name string
 			age  int
 		}
 		s := unexportedStruct{name: "original", age: 25}
-
-		// Act
-		err := fillDefaults(&s, maxDepth)
-
-		// Assert
-		require.NoError(t, err)
-		// Unexported fields should remain unchanged
+		fillDefaults(&s)
 		assert.Equal(t, unexportedStruct{name: "original", age: 25}, s)
 	})
 
 	t.Run("Struct with interface field", func(t *testing.T) {
-		// Arrange
 		type interfaceStruct struct {
 			Data interface{}
 		}
 		s := interfaceStruct{}
-
-		// Act
-		err := fillDefaults(&s, maxDepth)
-
-		// Assert
-		require.NoError(t, err)
+		fillDefaults(&s)
 		assert.Nil(t, s.Data)
-	})
-
-	t.Run("Handle unexported fields", func(t *testing.T) {
-		type unexportedField struct {
-			exported   string
-			unexported string
-		}
-		value := unexportedField{exported: "test"}
-		err := fillDefaults(&value, maxDepth)
-		require.NoError(t, err)
-		assert.Equal(t, "test", value.exported)
-		assert.Empty(t, value.unexported)
 	})
 
 	t.Run("Handle embedded fields with nil pointers", func(t *testing.T) {
@@ -282,43 +242,13 @@ func TestFillDefaults(t *testing.T) {
 			*Embedded
 		}
 		value := TestStruct{}
-		err := fillDefaults(&value, maxDepth)
-		require.NoError(t, err)
-		require.NotNil(t, value.Embedded)
-		assert.Empty(t, value.Embedded.Value)
-	})
-
-	t.Run("Handle nil pointer", func(t *testing.T) {
-		type TestStruct struct {
-			Value string
-		}
-		var nilPtr *TestStruct
-		v := reflect.ValueOf(&nilPtr).Elem()
-
-		err := fillDefaultsRecursive(v, 0, maxDepth)
-		require.NoError(t, err)
-
-		assert.NotNil(t, nilPtr)
-		assert.Equal(t, "", nilPtr.Value)
-	})
-
-	t.Run("Handle unexported nil pointer", func(t *testing.T) {
-		type TestStruct struct {
-			value *string
-		}
-		test := TestStruct{}
-		v := reflect.ValueOf(&test).Elem().Field(0)
-
-		err := fillDefaultsRecursive(v, 0, maxDepth)
-		require.NoError(t, err)
-
-		assert.Nil(t, test.value)
+		fillDefaults(&value)
+		require.Nil(t, value.Embedded)
 	})
 
 	t.Run("Handle embedded fields implementing DefaultProvider", func(t *testing.T) {
 		value := TestStruct{}
-		err := fillDefaults(&value, maxDepth)
-		require.NoError(t, err)
+		fillDefaults(&value)
 		assert.Equal(t, "default", value.Value)
 	})
 
@@ -330,26 +260,8 @@ func TestFillDefaults(t *testing.T) {
 			Ptr *Inner
 		}
 		value := TestStruct{}
-		err := fillDefaults(&value, maxDepth)
-		require.NoError(t, err)
-		require.NotNil(t, value.Ptr)
-		assert.Empty(t, value.Ptr.Value)
-	})
-
-	t.Run("Handle errors in nested structs", func(t *testing.T) {
-		type DeepNested struct {
-			Value *int
-		}
-		type Nested struct {
-			Deep DeepNested
-		}
-		type TestStruct struct {
-			Nested Nested
-		}
-		value := TestStruct{}
-		err := fillDefaults(&value, 1) // Set max depth to 1 to force an error
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "maximum recursion depth exceeded")
+		fillDefaults(&value)
+		require.Nil(t, value.Ptr)
 	})
 
 	t.Run("Handle slice of structs", func(t *testing.T) {
@@ -360,8 +272,7 @@ func TestFillDefaults(t *testing.T) {
 			Items []Item
 		}
 		value := TestStruct{Items: []Item{{}, {}}}
-		err := fillDefaults(&value, maxDepth)
-		require.NoError(t, err)
+		fillDefaults(&value)
 		assert.Len(t, value.Items, 2)
 	})
 
@@ -373,70 +284,38 @@ func TestFillDefaults(t *testing.T) {
 			Items map[string]Item
 		}
 		value := TestStruct{Items: map[string]Item{"a": {}, "b": {}}}
-		err := fillDefaults(&value, maxDepth)
-		require.NoError(t, err)
+		fillDefaults(&value)
 		assert.Len(t, value.Items, 2)
 	})
 
 	t.Run("Panic in user-defined Defaults method", func(t *testing.T) {
 		value := ErrorStruct{}
 		assert.Panics(t, func() {
-			_ = fillDefaults(&value, maxDepth)
+			fillDefaults(&value)
 		})
 	})
-}
 
-func TestFillFromDefaults(t *testing.T) {
-	t.Run("Fill struct with defaults", func(t *testing.T) {
-		// Arrange
-		type TestStruct struct {
-			Name string
-			Age  int
+	t.Run("Handle nested pointer fields", func(t *testing.T) {
+		type NestedPtr struct {
+			Value *string
 		}
-		dst := TestStruct{}
-		src := TestStruct{Name: "Default", Age: 30}
-
-		// Act
-		fillFromDefaults(reflect.ValueOf(&dst).Elem(), reflect.ValueOf(src))
-
-		// Assert
-		assert.Equal(t, "Default", dst.Name)
-		assert.Equal(t, 30, dst.Age)
+		type TestStruct struct {
+			Nested *NestedPtr
+		}
+		value := TestStruct{}
+		fillDefaults(&value)
+		require.Nil(t, value.Nested)
 	})
 
-	t.Run("Do not overwrite non-zero values", func(t *testing.T) {
-		// Arrange
+	t.Run("Handle pointer to pointer", func(t *testing.T) {
 		type TestStruct struct {
-			Name string
-			Age  int
+			Value *string
 		}
-		dst := TestStruct{Name: "Original"}
-		src := TestStruct{Name: "Default", Age: 30}
-
-		// Act
-		fillFromDefaults(reflect.ValueOf(&dst).Elem(), reflect.ValueOf(src))
-
-		// Assert
-		assert.Equal(t, "Original", dst.Name)
-		assert.Equal(t, 30, dst.Age)
-	})
-
-	t.Run("Handle different field types", func(t *testing.T) {
-		// Arrange
-		type SrcStruct struct {
-			Value int
-		}
-		type DstStruct struct {
-			Value string
-		}
-		dst := DstStruct{}
-		src := SrcStruct{Value: 42}
-
-		// Act
-		fillFromDefaults(reflect.ValueOf(&dst).Elem(), reflect.ValueOf(src))
-
-		// Assert
-		assert.Equal(t, "", dst.Value) // Should not change due to incompatible types
+		value := &TestStruct{}
+		ptrToPtr := &value
+		fillDefaults(&ptrToPtr)
+		require.NotNil(t, *ptrToPtr)
+		require.Nil(t, (*ptrToPtr).Value)
 	})
 }
 

@@ -181,9 +181,11 @@ func (l *loader[T]) Load(paths ...string) (*T, error) {
 	}
 
 	// Apply defaults
-	if err := fillDefaults(cfg, l.config.MaxDepth); err != nil {
-		return nil, fmt.Errorf("fill defaults: %w", err)
-	}
+	// if err := fillDefaults(cfg, l.config.MaxDepth); err != nil {
+	// 	return nil, fmt.Errorf("fill defaults: %w", err)
+	// }
+
+	fillDefaults(cfg)
 
 	// Transform
 	if l.transformFn != nil {

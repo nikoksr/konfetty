@@ -1,13 +1,8 @@
 package konfetty
 
 import (
-	"errors"
 	"reflect"
 )
-
-// maxDepth defines the maximum recursion depth for filling defaults.
-// This prevents infinite recursion in case of circular dependencies.
-const maxDepth = 100 // Adjust this value as needed
 
 // DefaultProvider is an interface for types that can provide their own default values.
 // Structs implementing this interface can define a Defaults method to return default values.
@@ -17,152 +12,141 @@ type DefaultProvider interface {
 
 // fillDefaults recursively fills in default values for structs that implement DefaultProvider.
 // It traverses the struct hierarchy and applies defaults to fields and nested structs.
-func fillDefaults(v any, maxDepth int) error {
-	return fillDefaultsRecursive(reflect.ValueOf(v), 0, maxDepth)
+// FillDefaults recursively fills default values in the given value
+func fillDefaults(v interface{}) {
+	fillDefaultsRecursive(reflect.ValueOf(v), make(map[uintptr]bool))
 }
 
-// fillDefaultsRecursive is the core function that recursively fills default values.
-// It handles various types including pointers, structs, slices, and maps.
-func fillDefaultsRecursive(v reflect.Value, depth, maxDepth int) error {
-	// Check if maximum recursion depth is reached
-	if depth > maxDepth {
-		return errors.New("maximum recursion depth exceeded, possible circular dependency")
+func fillDefaultsRecursive(v reflect.Value, visited map[uintptr]bool) {
+	if !v.IsValid() {
+		return
 	}
 
-	// Handle pointer types
-	if v.Kind() == reflect.Ptr {
+	// Handle pointers
+	for v.Kind() == reflect.Ptr {
 		if v.IsNil() {
-			// Check if we can set the value before creating a new instance
-			if !v.CanSet() {
-				return nil // Skip if we can't set the value
+			if v.Type().Implements(reflect.TypeOf((*DefaultProvider)(nil)).Elem()) {
+				v.Set(reflect.New(v.Type().Elem()))
+			} else {
+				return
 			}
-			// If the pointer is nil, create a new instance of the pointed-to type
-			v.Set(reflect.New(v.Type().Elem()))
 		}
 		v = v.Elem()
 	}
 
-	// Only process struct types
-	if v.Kind() != reflect.Struct {
-		return nil
+	if !v.CanSet() {
+		return
 	}
 
-	t := v.Type()
+	// Handle structs
+	if v.Kind() == reflect.Struct {
+		// Check for circular references
+		if visited[v.UnsafeAddr()] {
+			return
+		}
+		visited[v.UnsafeAddr()] = true
 
-	// Iterate through all fields of the struct
+		// Apply defaults from lowest to highest priority
+		applyDefaultsRecursive(v)
+
+		// Recurse on all fields
+		for i := 0; i < v.NumField(); i++ {
+			field := v.Field(i)
+			fillDefaultsRecursive(field, visited)
+		}
+
+		return
+	}
+
+	// Handle slices and arrays
+	if v.Kind() == reflect.Slice || v.Kind() == reflect.Array {
+		for i := 0; i < v.Len(); i++ {
+			fillDefaultsRecursive(v.Index(i), visited)
+		}
+		return
+	}
+
+	// Handle maps
+	if v.Kind() == reflect.Map {
+		for _, key := range v.MapKeys() {
+			fillDefaultsRecursive(v.MapIndex(key), visited)
+		}
+		return
+	}
+}
+
+func applyDefaultsRecursive(v reflect.Value) {
+	// First, apply defaults to embedded fields
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
-		fieldType := t.Field(i)
-
-		// Skip unexported fields
-		if !field.CanSet() {
-			continue
-		}
-
-		// Handle embedded fields
-		if fieldType.Anonymous {
-			if field.Kind() == reflect.Ptr && field.IsNil() {
-				// Check if we can set the field before creating a new instance
-				if !field.CanSet() {
-					continue
-				}
-				// If the embedded field is a nil pointer, create a new instance
-				field.Set(reflect.New(field.Type().Elem()))
-			}
-			if err := fillDefaultsRecursive(field, depth+1, maxDepth); err != nil {
-				return err
-			}
-
-			// Apply defaults for the embedded field if it implements DefaultProvider
-			if field.CanAddr() && field.Addr().Type().Implements(reflect.TypeOf((*DefaultProvider)(nil)).Elem()) {
-				defaulter := field.Addr().Interface().(DefaultProvider)
-				defaults := reflect.ValueOf(defaulter.Defaults())
-				if defaults.Kind() == reflect.Ptr {
-					defaults = defaults.Elem()
-				}
-				fillFromDefaults(field, defaults)
-			}
-
-			continue
-		}
-
-		// Handle different field types
-		switch field.Kind() {
-		case reflect.Ptr:
-			if field.IsNil() {
-				// Check if we can set the field before creating a new instance
-				if !field.CanSet() {
-					continue
-				}
-				// If the field is a nil pointer, create a new instance
-				field.Set(reflect.New(field.Type().Elem()))
-			}
-			if err := fillDefaultsRecursive(field.Elem(), depth+1, maxDepth); err != nil {
-				return err
-			}
-		case reflect.Struct:
-			if err := fillDefaultsRecursive(field, depth+1, maxDepth); err != nil {
-				return err
-			}
-		case reflect.Slice:
-			for j := 0; j < field.Len(); j++ {
-				if err := fillDefaultsRecursive(field.Index(j), depth+1, maxDepth); err != nil {
-					return err
-				}
-			}
-		case reflect.Map:
-			// Handle maps
-			for _, key := range field.MapKeys() {
-				value := field.MapIndex(key)
-				if value.CanAddr() {
-					if err := fillDefaultsRecursive(value, depth+1, maxDepth); err != nil {
-						return err
-					}
-				}
-			}
+		if field.Kind() == reflect.Struct {
+			applyDefaultsRecursive(field)
 		}
 	}
 
-	// Apply defaults to the current struct if it implements DefaultProvider
-	if v.CanAddr() && v.Addr().Type().Implements(reflect.TypeOf((*DefaultProvider)(nil)).Elem()) {
-		defaulter := v.Addr().Interface().(DefaultProvider)
-		defaults := reflect.ValueOf(defaulter.Defaults())
-		if defaults.Kind() == reflect.Ptr {
-			defaults = defaults.Elem()
-		}
-		fillFromDefaults(v, defaults)
+	// Then apply struct-specific defaults
+	if v.Addr().Type().Implements(reflect.TypeOf((*DefaultProvider)(nil)).Elem()) {
+		defaults := v.Addr().Interface().(DefaultProvider).Defaults()
+		applyDefaults(v, reflect.ValueOf(defaults))
 	}
-
-	return nil
 }
 
-// fillFromDefaults copies default values from the source to the destination struct.
-// It only sets values for fields that are zero-valued in the destination.
-func fillFromDefaults(dst, src reflect.Value) {
-	for i := 0; i < src.NumField(); i++ {
-		srcField := src.Field(i)
-		srcFieldName := src.Type().Field(i).Name
+func applyDefaults(target, defaults reflect.Value) {
+	if target.Kind() != reflect.Struct || defaults.Kind() != reflect.Struct {
+		return
+	}
 
-		// Check if the destination has this field
-		dstField := dst.FieldByName(srcFieldName)
-		if !dstField.IsValid() || !dstField.CanSet() {
-			continue // Skip fields that don't exist in the destination or can't be set
-		}
+	for i := 0; i < defaults.NumField(); i++ {
+		defaultField := defaults.Field(i)
+		targetField := target.Field(i)
 
-		// Check if the types are compatible
-		if !srcField.Type().AssignableTo(dstField.Type()) {
-			continue // Skip if types are not compatible
-		}
-
-		// Only set the default value if the destination field is zero-valued
-		if isZeroValue(dstField) {
-			dstField.Set(srcField)
+		if targetField.CanSet() {
+			if isZeroValue(targetField) {
+				// If the target field is zero, always apply the default
+				if defaultField.Type() == targetField.Type() {
+					targetField.Set(defaultField)
+				}
+			} else if targetField.Kind() == reflect.Ptr && defaultField.Kind() == reflect.Ptr {
+				// For non-zero pointers, recurse into the struct
+				if !targetField.IsNil() && !defaultField.IsNil() {
+					applyDefaults(targetField.Elem(), defaultField.Elem())
+				}
+			}
 		}
 	}
 }
 
-// isZeroValue checks if the given reflect.Value is the zero value for its type.
 func isZeroValue(v reflect.Value) bool {
-	zero := reflect.Zero(v.Type()).Interface()
-	return reflect.DeepEqual(v.Interface(), zero)
+	switch v.Kind() {
+	case reflect.Bool:
+		return !v.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return v.Uint() == 0
+	case reflect.Float32, reflect.Float64:
+		return v.Float() == 0
+	case reflect.Complex64, reflect.Complex128:
+		return v.Complex() == complex(0, 0)
+	case reflect.Array:
+		for i := 0; i < v.Len(); i++ {
+			if !isZeroValue(v.Index(i)) {
+				return false
+			}
+		}
+		return true
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+		return v.IsNil()
+	case reflect.String:
+		return v.Len() == 0
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			if !isZeroValue(v.Field(i)) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
 }
