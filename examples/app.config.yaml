@@ -1,0 +1,8 @@
+database:
+  host: super-secret-database.myapp.com
+  port: 5555
+  username: myuser
+  password: mypassword
+
+server:
+  host: localhost

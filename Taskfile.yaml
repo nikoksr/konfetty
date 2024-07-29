@@ -45,5 +45,6 @@ tasks:
       - task --list
 
   default:
+    desc: Show help
     cmds:
-      - echo "{{.GREETING}}"
+      - task help

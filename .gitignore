@@ -1,0 +1,8 @@
+# Folders
+.idea/
+.vscode/
+tmp/
+
+# Files
+cover.html
+coverage.out
