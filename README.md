@@ -7,9 +7,9 @@
 &nbsp;
 
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat)](https://pkg.go.dev/github.com/nikoksr/konfetty)
-[![codecov](https://codecov.io/gh/nikoksr/konfetty/branch/main/graph/badge.svg?token=QDON0KO2WV)](https://codecov.io/gh/nikoksr/konfetty)
+[![codecov](https://codecov.io/gh/nikoksr/konfetty/graph/badge.svg?token=lySNULyXHL)](https://codecov.io/gh/nikoksr/konfetty)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nikoksr/konfetty)](https://goreportcard.com/report/github.com/nikoksr/konfetty)
-[![Maintainability](https://api.codeclimate.com/v1/badges/b3afd7bf115341995077/maintainability)](https://codeclimate.com/github/nikoksr/konfetty/maintainability)
+[![Maintainability](https://api.codeclimate.com/v1/badges/e87ea581a2617e6afb36/maintainability)](https://codeclimate.com/github/nikoksr/konfetty/maintainability)
 </div>
 
 &nbsp;
