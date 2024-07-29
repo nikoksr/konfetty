@@ -124,7 +124,6 @@ func main() {
 			},
 		).
 		WithTransformer(func(c *SmartHomeConfig) {
-
 			// Example transformation: Set all lights to 20% brightness if EnergyMode is "saving"
 
 			if c.General.EnergyMode != "saving" {
@@ -141,7 +140,6 @@ func main() {
 			}
 		}).
 		Build()
-
 	if err != nil {
 		fmt.Printf("Error processing config: %v\n", err)
 		return

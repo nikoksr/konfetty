@@ -59,7 +59,6 @@ func main() {
 			return nil
 		}).
 		Build()
-
 	if err != nil {
 		log.Fatalf("Error processing pizza order: %v", err)
 	}
