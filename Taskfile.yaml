@@ -5,6 +5,14 @@ env:
   GOPROXY: "https://proxy.golang.org,direct"
 
 tasks:
+  tools:
+    desc: Install tools
+    cmds:
+      - go install github.com/segmentio/golines@latest
+      - go install mvdan.cc/gofumpt@latest
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - go install github.com/daixiang0/gci@latest
+
   setup:
     desc: Setup dev environment
     cmds:
@@ -27,6 +35,13 @@ tasks:
     cmds:
       - go build ./...
       - go test -failfast -race ./...
+
+  ci:
+    desc: Run CI checks
+    cmds:
+      - task fmt
+      - task lint
+      - task test
 
   gen-coverage:
     desc: Generate coverage report
