@@ -268,3 +268,63 @@ func TestApplyDefaultsErrors(t *testing.T) {
 		assert.Contains(t, err.Error(), "cannot be nil", "Error message should indicate that input cannot be nil")
 	})
 }
+
+func TestApplyDefaultsWithInterfaceSlice(t *testing.T) {
+	t.Parallel()
+
+	type BaseDevice struct {
+		Enabled bool
+	}
+
+	type LightDevice struct {
+		BaseDevice
+		Brightness int
+	}
+
+	type ThermostatDevice struct {
+		BaseDevice
+		Temperature float64
+	}
+
+	type RoomConfig struct {
+		Devices []interface{}
+	}
+
+	config := &RoomConfig{
+		Devices: []interface{}{
+			&LightDevice{BaseDevice: BaseDevice{Enabled: true}},
+			&LightDevice{Brightness: 75},
+			&ThermostatDevice{},
+		},
+	}
+
+	defaults := map[reflect.Type][]interface{}{
+		reflect.TypeOf(BaseDevice{}):  {BaseDevice{Enabled: false}},
+		reflect.TypeOf(LightDevice{}): {LightDevice{Brightness: 50}},
+		reflect.TypeOf(ThermostatDevice{}): {ThermostatDevice{
+			BaseDevice:  BaseDevice{Enabled: true},
+			Temperature: 20.0,
+		}},
+	}
+
+	err := applyDefaults(config, defaults)
+	require.NoError(t, err)
+
+	devices := config.Devices
+	require.Len(t, devices, 3)
+
+	light1, ok := devices[0].(*LightDevice)
+	require.True(t, ok)
+	assert.True(t, light1.Enabled)
+	assert.Equal(t, 50, light1.Brightness)
+
+	light2, ok := devices[1].(*LightDevice)
+	require.True(t, ok)
+	assert.False(t, light2.Enabled)
+	assert.Equal(t, 75, light2.Brightness)
+
+	thermostat, ok := devices[2].(*ThermostatDevice)
+	require.True(t, ok)
+	assert.True(t, thermostat.Enabled)
+	assert.InEpsilon(t, 20.0, thermostat.Temperature, 0.0)
+}
