@@ -21,11 +21,12 @@ func applyDefaults(config any, defaults map[reflect.Type][]any) error {
 
 // applyDefaultsRecursive contains the core logic for applying default values to the config. It recursively traverses
 // the config structure, applying defaults where appropriate.
+//
+//nolint:gocognit // Will fix this later, just want this working for now
 func applyDefaultsRecursive(v reflect.Value, defaults map[reflect.Type][]any) error {
 	t := v.Type()
 
-	// Apply defaults for this specific type, if any exist. We iterate in reverse order to respect the priority of later
-	// defaults.
+	// Apply defaults for this specific type, if any exist
 	if typeDefaults, ok := defaults[t]; ok {
 		for i := len(typeDefaults) - 1; i >= 0; i-- {
 			mergeDefault(v, reflect.ValueOf(typeDefaults[i]))
@@ -33,9 +34,8 @@ func applyDefaultsRecursive(v reflect.Value, defaults map[reflect.Type][]any) er
 	}
 
 	// Recursive case: struct fields
-	// We dive into each field of a struct, applying defaults recursively.
 	if t.Kind() == reflect.Struct {
-		for i := range v.NumField() {
+		for i := range t.NumField() {
 			if err := applyDefaultsRecursive(v.Field(i), defaults); err != nil {
 				return err
 			}
@@ -43,17 +43,19 @@ func applyDefaultsRecursive(v reflect.Value, defaults map[reflect.Type][]any) er
 	}
 
 	// Recursive case: slice elements
-	// We apply defaults to each element of a slice.
 	if t.Kind() == reflect.Slice {
 		for i := range v.Len() {
-			if err := applyDefaultsRecursive(v.Index(i), defaults); err != nil {
+			elem := v.Index(i)
+			if elem.Kind() == reflect.Interface && !elem.IsNil() {
+				elem = elem.Elem()
+			}
+			if err := applyDefaultsRecursive(elem, defaults); err != nil {
 				return err
 			}
 		}
 	}
 
 	// Recursive case: pointer
-	// If we encounter a non-nil pointer, we dereference and continue.
 	if t.Kind() == reflect.Ptr && !v.IsNil() {
 		return applyDefaultsRecursive(v.Elem(), defaults)
 	}
