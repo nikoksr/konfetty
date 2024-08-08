@@ -59,8 +59,10 @@ func main() {
         Devices: []any{
             // A light device that's enabled by default
             &LightDevice{BaseDevice: BaseDevice{Enabled: true}},
+
             // A light device with a custom brightness
             &LightDevice{Brightness: 75},
+
             // An empty thermostat device
             &ThermostatDevice{},
         },
@@ -94,18 +96,27 @@ func main() {
 
     // The processed config would look like this:
     //
-    // &RoomConfig{
-    //     Devices: []any{
-    //         // The first light device stays enabled and was given a brightness of 50
-    //         &LightDevice{BaseDevice: BaseDevice{Enabled: true}, Brightness: 50},
+    //  &RoomConfig{
+    //      Devices: []any{
+    //          // The first light device stays enabled and was given a brightness of 50
+    //          &LightDevice{
+    //              BaseDevice: BaseDevice{Enabled: true},
+    //              Brightness: 50,
+    //          },
     //
-    //         // The second light device was disabled and kept the custom brightness of 75
-    //         &LightDevice{BaseDevice: BaseDevice{Enabled: false}, Brightness: 75},
+    //          // The second light device was disabled and kept the custom brightness of 75
+    //          &LightDevice{
+    //              BaseDevice: BaseDevice{Enabled: false},
+    //              Brightness: 75,
+    //          },
     //
-    //         // The thermostat device was enabled and given a temperature of 20.0
-    //         &ThermostatDevice{BaseDevice: BaseDevice{Enabled: true}, Temperature: 20.0},
-    //     },
-    // }
+    //          // The thermostat device was enabled and given a temperature of 20.0
+    //          &ThermostatDevice{
+    //              BaseDevice: BaseDevice{Enabled: true},
+    //              Temperature: 20.0,
+    //          },
+    //      },
+    //  }
 
     // Continue using your config struct as usual ...
 }
