@@ -57,20 +57,29 @@ func main() {
 		// Stubbing a configuration, usually pre-populated by your config provider.
     cfg := &RoomConfig{
         Devices: []any{
-            &LightDevice{BaseDevice: BaseDevice{Enabled: true}},  // A light device that's enabled by default
-            &LightDevice{Brightness: 75},                         // A light device with a custom brightness
-            &ThermostatDevice{},                                  // An empty thermostat device
+            // A light device that's enabled by default
+            &LightDevice{BaseDevice: BaseDevice{Enabled: true}},
+            // A light device with a custom brightness
+            &LightDevice{Brightness: 75},
+            // An empty thermostat device
+            &ThermostatDevice{},
         },
     }
 
     cfg, err := konfetty.FromConfig(cfg).
         WithDefaults(
-            BaseDevice{Enabled: false},           // Devices are disabled by default, unless overridden, as seen above
-            LightDevice{Brightness: 50},          // Light devices have a default brightness of 50, unless overridden
+        		// Devices are disabled by default
+            BaseDevice{Enabled: false},
+
+            // Light devices have a default brightness of 50
+            LightDevice{Brightness: 50},
+
+            // Thermostat devices have a default temperature of 20.0 and are enabled by default
             ThermostatDevice{
-            	BaseDevice: BaseDevice{Enabled: true},  // Override the base device default for thermostats
-				Temperature: 20.0,                      // Thermostat devices have a default temperature of 20.0, unless overridden
-			},
+              // Override the base device default for thermostats
+            	BaseDevice: BaseDevice{Enabled: true},
+				      Temperature: 20.0,
+            },
         ).
         WithTransformer(func(cfg *RoomConfig) {
         	// Optional custom transformation logic for more complex processing
@@ -87,9 +96,14 @@ func main() {
     //
     // &RoomConfig{
     //     Devices: []any{
-    //         &LightDevice{BaseDevice: BaseDevice{Enabled: true}, Brightness: 50},           // The first light device stays enabled and was given a brightness of 50
-    //         &LightDevice{BaseDevice: BaseDevice{Enabled: false}, Brightness: 75},          // The second light device was disabled and given a brightness of 75
-    //         &ThermostatDevice{BaseDevice: BaseDevice{Enabled: true}, Temperature: 20.0},   // The thermostat device was enabled and given a temperature of 20.0
+    //         // The first light device stays enabled and was given a brightness of 50
+    //         &LightDevice{BaseDevice: BaseDevice{Enabled: true}, Brightness: 50},
+    //
+    //         // The second light device was disabled and kept the custom brightness of 75
+    //         &LightDevice{BaseDevice: BaseDevice{Enabled: false}, Brightness: 75},
+    //
+    //         // The thermostat device was enabled and given a temperature of 20.0
+    //         &ThermostatDevice{BaseDevice: BaseDevice{Enabled: true}, Temperature: 20.0},
     //     },
     // }
 
