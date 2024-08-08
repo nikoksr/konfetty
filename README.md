@@ -54,7 +54,7 @@ type RoomConfig struct {
 }
 
 func main() {
-		// Stubbing a configuration, usually pre-populated by your config provider.
+	// Stubbing a configuration, usually pre-populated by your config provider.
     cfg := &RoomConfig{
         Devices: []any{
             // A light device that's enabled by default
@@ -68,7 +68,7 @@ func main() {
 
     cfg, err := konfetty.FromConfig(cfg).
         WithDefaults(
-        		// Devices are disabled by default
+        	// Devices are disabled by default
             BaseDevice{Enabled: false},
 
             // Light devices have a default brightness of 50
@@ -76,9 +76,9 @@ func main() {
 
             // Thermostat devices have a default temperature of 20.0 and are enabled by default
             ThermostatDevice{
-              // Override the base device default for thermostats
-            	BaseDevice: BaseDevice{Enabled: true},
-				      Temperature: 20.0,
+                // Override the base device default for thermostats
+                BaseDevice: BaseDevice{Enabled: true},
+			    Temperature: 20.0,
             },
         ).
         WithTransformer(func(cfg *RoomConfig) {
