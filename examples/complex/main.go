@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/nikoksr/konfetty"
@@ -92,7 +92,7 @@ func main() {
 	}
 
 	// Use konfetty to process the config
-	cfg, err := konfetty.FromConfig(cfg).
+	cfg, err := konfetty.FromStruct(cfg).
 		WithDefaults(
 			// Default for all BaseDevice instances
 			BaseDevice{
@@ -141,8 +141,7 @@ func main() {
 		}).
 		Build()
 	if err != nil {
-		fmt.Printf("Error processing config: %v\n", err)
-		return
+		log.Fatalf("Error building config: %v", err)
 	}
 
 	// The processed config would look like this:

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"log"
 
 	"github.com/knadh/koanf/parsers/yaml"
@@ -51,7 +51,7 @@ func main() {
 	// Simply pass the config to konfetty and let it handle the rest.
 	//
 
-	cfg, err = konfetty.FromConfig(cfg).
+	cfg, err = konfetty.FromStruct(cfg).
 		WithDefaults(
 			AppConfig{
 				Database: DatabaseConfig{
@@ -71,7 +71,7 @@ func main() {
 		}).
 		WithValidator(func(c *AppConfig) error {
 			if c.Database.Username == "" || c.Database.Password == "" {
-				return fmt.Errorf("database credentials are required")
+				return errors.New("database credentials are required")
 			}
 			return nil
 		}).

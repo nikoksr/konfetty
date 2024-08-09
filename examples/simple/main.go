@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"log"
 
 	"github.com/nikoksr/konfetty"
@@ -31,10 +31,12 @@ func main() {
 			Crust: "thin",
 		},
 		Quantity: 1,
+		Delivery: true,
+		Address:  "A-123, 4th Street, New York",
 	}
 
 	// Use konfetty to process the config
-	cfg, err := konfetty.FromConfig(cfg).
+	cfg, err := konfetty.FromStruct(cfg).
 		WithDefaults(
 			OrderConfig{
 				Pizza: PizzaConfig{
@@ -54,7 +56,7 @@ func main() {
 		}).
 		WithValidator(func(c *OrderConfig) error {
 			if c.Delivery && c.Address == "" {
-				return fmt.Errorf("delivery address is required for delivery orders")
+				return errors.New("delivery address is required for delivery orders")
 			}
 			return nil
 		}).
@@ -80,8 +82,6 @@ func main() {
 	//   },
 	//   Quantity: 1,
 	//   Delivery: true,
-	//   Address:  "",
+	//   Address:  "A-123, 4th Street, New York",
 	// }
-	//
-	// Note: The above configuration would fail validation due to missing address for delivery.
 }

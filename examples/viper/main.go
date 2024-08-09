@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"log"
 
 	"github.com/spf13/viper"
@@ -47,7 +47,7 @@ func main() {
 	}
 
 	// Use konfetty to handle the rest
-	cfg, err = konfetty.FromConfig(cfg).
+	cfg, err = konfetty.FromStruct(cfg).
 		WithDefaults(
 			AppConfig{
 				Database: DatabaseConfig{
@@ -67,7 +67,7 @@ func main() {
 		}).
 		WithValidator(func(c *AppConfig) error {
 			if c.Database.Username == "" || c.Database.Password == "" {
-				return fmt.Errorf("database credentials are required")
+				return errors.New("database credentials are required")
 			}
 			return nil
 		}).
