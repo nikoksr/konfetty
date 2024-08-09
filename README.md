@@ -68,7 +68,7 @@ func main() {
         },
     }
 
-    cfg, err := konfetty.FromConfig(cfg).
+    cfg, err := konfetty.FromStruct(cfg).
         WithDefaults(
         	// Devices are disabled by default
             BaseDevice{Enabled: false},
@@ -151,7 +151,7 @@ Konfetty doesn't replace your current config loading mechanism — it enhances i
 viper.ReadInConfig()
 viper.Unmarshal(&config)
 
-config, err := konfetty.FromConfig(&config).
+config, err := konfetty.FromStruct(&config).
     WithDefaults(defaultConfig).
     WithTransformer(transformer).
     WithValidator(validator).
@@ -165,7 +165,7 @@ k := koanf.New(".")
 k.Load(file.Provider("config.yaml"), yaml.Parser())
 k.Unmarshal("", &config)
 
-config, err := konfetty.FromConfig(&config).
+config, err := konfetty.FromStruct(&config).
     WithDefaults(defaultConfig).
     Build()
 ```

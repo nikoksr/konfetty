@@ -16,11 +16,11 @@ type TestConfig struct {
 	IsAdmin bool
 }
 
-func TestFromConfig(t *testing.T) {
+func TestFromStruct(t *testing.T) {
 	t.Parallel()
 
 	config := &TestConfig{Name: "Alice", Age: 30, IsAdmin: true}
-	processor := konfetty.FromConfig(config)
+	processor := konfetty.FromStruct(config)
 
 	result, err := processor.Build()
 	require.NoError(t, err)
@@ -64,7 +64,7 @@ func TestWithDefaults(t *testing.T) {
 	t.Parallel()
 
 	config := &TestConfig{}
-	processor := konfetty.FromConfig(config).WithDefaults(TestConfig{Name: "Default", Age: 18, IsAdmin: false})
+	processor := konfetty.FromStruct(config).WithDefaults(TestConfig{Name: "Default", Age: 18, IsAdmin: false})
 
 	result, err := processor.Build()
 	require.NoError(t, err)
@@ -79,7 +79,7 @@ func TestWithTransformer(t *testing.T) {
 		c.Name = "Mr. " + c.Name
 		c.Age++
 	}
-	processor := konfetty.FromConfig(config).WithTransformer(transformer)
+	processor := konfetty.FromStruct(config).WithTransformer(transformer)
 
 	result, err := processor.Build()
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestWithValidator(t *testing.T) {
 		}
 		return nil
 	}
-	processor := konfetty.FromConfig(config).WithValidator(validator)
+	processor := konfetty.FromStruct(config).WithValidator(validator)
 
 	_, err := processor.Build()
 	require.Error(t, err)
@@ -107,7 +107,7 @@ func TestBuildWithAllOptions(t *testing.T) {
 	t.Parallel()
 
 	config := &TestConfig{}
-	processor := konfetty.FromConfig(config).
+	processor := konfetty.FromStruct(config).
 		WithDefaults(TestConfig{Name: "Default", Age: 18, IsAdmin: false}).
 		WithTransformer(func(c *TestConfig) {
 			c.Name = "Mr. " + c.Name
@@ -158,7 +158,7 @@ func TestBuildErrorCases(t *testing.T) {
 		validator := func(_ *TestConfig) error {
 			return errors.New("validator error")
 		}
-		processor := konfetty.FromConfig(config).WithValidator(validator)
+		processor := konfetty.FromStruct(config).WithValidator(validator)
 
 		_, err := processor.Build()
 		require.Error(t, err)
