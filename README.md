@@ -167,6 +167,8 @@ k.Unmarshal("", &config)
 
 config, err := konfetty.FromStruct(&config).
     WithDefaults(defaultConfig).
+    WithTransformer(transformer).
+    WithValidator(validator).
     Build()
 ```
 
