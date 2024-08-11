@@ -74,20 +74,20 @@ func TestApplyDefaultsErrors(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		config   interface{}
-		defaults map[reflect.Type][]interface{}
+		config   any
+		defaults map[reflect.Type][]any
 		expected string
 	}{
 		{
 			name:     "Non-pointer input",
 			config:   struct{ Name string }{},
-			defaults: map[reflect.Type][]interface{}{},
+			defaults: map[reflect.Type][]any{},
 			expected: "must be a pointer",
 		},
 		{
 			name:     "Nil input",
 			config:   (*struct{ Name string })(nil),
-			defaults: map[reflect.Type][]interface{}{},
+			defaults: map[reflect.Type][]any{},
 			expected: "cannot be nil",
 		},
 	}
@@ -109,7 +109,7 @@ func testBasicTypes(t *testing.T) {
 	}
 
 	config := &SimpleStruct{Name: "", Age: 0}
-	defaults := map[reflect.Type][]interface{}{
+	defaults := map[reflect.Type][]any{
 		reflect.TypeOf(SimpleStruct{}): {
 			SimpleStruct{Name: "Default", Age: 30},
 		},
@@ -138,9 +138,9 @@ func testNestedAndEmbeddedStructs(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		config   interface{}
-		defaults map[reflect.Type][]interface{}
-		expected interface{}
+		config   any
+		defaults map[reflect.Type][]any
+		expected any
 	}{
 		{
 			name: "Nested struct",
@@ -148,7 +148,7 @@ func testNestedAndEmbeddedStructs(t *testing.T) {
 				Simple: SimpleStruct{},
 				Value:  0,
 			},
-			defaults: map[reflect.Type][]interface{}{
+			defaults: map[reflect.Type][]any{
 				reflect.TypeOf(NestedStruct{}): {
 					NestedStruct{Value: 3.14},
 				},
@@ -167,7 +167,7 @@ func testNestedAndEmbeddedStructs(t *testing.T) {
 				SimpleStruct: SimpleStruct{},
 				Extra:        "",
 			},
-			defaults: map[reflect.Type][]interface{}{
+			defaults: map[reflect.Type][]any{
 				reflect.TypeOf(EmbeddedStruct{}): {
 					EmbeddedStruct{Extra: "ExtraDefault"},
 				},
@@ -208,9 +208,9 @@ func testSlicesAndPointers(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		config   interface{}
-		defaults map[reflect.Type][]interface{}
-		expected interface{}
+		config   any
+		defaults map[reflect.Type][]any
+		expected any
 	}{
 		{
 			name: "Slice of structs",
@@ -220,7 +220,7 @@ func testSlicesAndPointers(t *testing.T) {
 					{Name: "", Age: 25},
 				},
 			},
-			defaults: map[reflect.Type][]interface{}{
+			defaults: map[reflect.Type][]any{
 				reflect.TypeOf(SimpleStruct{}): {
 					SimpleStruct{Name: "Default", Age: 30},
 				},
@@ -237,7 +237,7 @@ func testSlicesAndPointers(t *testing.T) {
 			config: &PointerStruct{
 				Ptr: &SimpleStruct{},
 			},
-			defaults: map[reflect.Type][]interface{}{
+			defaults: map[reflect.Type][]any{
 				reflect.TypeOf(SimpleStruct{}): {
 					SimpleStruct{Name: "Default", Age: 30},
 				},
@@ -249,7 +249,7 @@ func testSlicesAndPointers(t *testing.T) {
 		{
 			name:   "Nil pointer",
 			config: &PointerStruct{},
-			defaults: map[reflect.Type][]interface{}{
+			defaults: map[reflect.Type][]any{
 				reflect.TypeOf(SimpleStruct{}): {
 					SimpleStruct{Name: "Default", Age: 30},
 				},
@@ -275,7 +275,7 @@ func testMultipleDefaults(t *testing.T) {
 	}
 
 	config := &SimpleStruct{Name: "", Age: 0}
-	defaults := map[reflect.Type][]interface{}{
+	defaults := map[reflect.Type][]any{
 		reflect.TypeOf(SimpleStruct{}): {
 			SimpleStruct{Name: "First", Age: 10},
 			SimpleStruct{Name: "Second", Age: 20},
@@ -319,7 +319,7 @@ func testComplexNestedStruct(t *testing.T) {
 		MapField: nil,
 	}
 
-	defaults := map[reflect.Type][]interface{}{
+	defaults := map[reflect.Type][]any{
 		reflect.TypeOf(ComplexStruct{}): {
 			ComplexStruct{
 				Name:    "DefaultName",
@@ -379,18 +379,18 @@ func testInterfaceSlice(t *testing.T) {
 	}
 
 	type RoomConfig struct {
-		Devices []interface{}
+		Devices []any
 	}
 
 	config := &RoomConfig{
-		Devices: []interface{}{
+		Devices: []any{
 			&LightDevice{BaseDevice: BaseDevice{Enabled: true}},
 			&LightDevice{Brightness: 75},
 			&ThermostatDevice{},
 		},
 	}
 
-	defaults := map[reflect.Type][]interface{}{
+	defaults := map[reflect.Type][]any{
 		reflect.TypeOf(BaseDevice{}):  {BaseDevice{Enabled: false}},
 		reflect.TypeOf(LightDevice{}): {LightDevice{Brightness: 50}},
 		reflect.TypeOf(ThermostatDevice{}): {ThermostatDevice{
@@ -432,7 +432,7 @@ func testCircularReferences(t *testing.T) {
 	config.Next.Next = &Circular{Name: ""}
 	config.Next.Next.Next = config
 
-	defaults := map[reflect.Type][]interface{}{
+	defaults := map[reflect.Type][]any{
 		reflect.TypeOf(Circular{}): {
 			Circular{Name: "Default"},
 		},
@@ -454,8 +454,8 @@ func testInterfaceFields(t *testing.T) {
 	}
 
 	type InterfaceContainer struct {
-		Data            interface{}
-		NestedContainer interface{}
+		Data            any
+		NestedContainer any
 	}
 
 	config := &InterfaceContainer{
@@ -465,7 +465,7 @@ func testInterfaceFields(t *testing.T) {
 		},
 	}
 
-	defaults := map[reflect.Type][]interface{}{
+	defaults := map[reflect.Type][]any{
 		reflect.TypeOf(ConcreteType{}): {
 			ConcreteType{Value: "default"},
 		},
@@ -506,7 +506,7 @@ func testMaps(t *testing.T) {
 		},
 	}
 
-	defaults := map[reflect.Type][]interface{}{
+	defaults := map[reflect.Type][]any{
 		reflect.TypeOf(Config{}): {
 			Config{
 				StringMap: map[string]string{"default": "value"},
@@ -554,7 +554,7 @@ func testEmbeddedStructs(t *testing.T) {
 
 	config := &Config{}
 
-	defaults := map[reflect.Type][]interface{}{
+	defaults := map[reflect.Type][]any{
 		reflect.TypeOf(unexportedEmbedded{}): {
 			unexportedEmbedded{privateField: "default private"},
 		},
@@ -613,7 +613,7 @@ func testSlicesOfInterfaces(t *testing.T) {
 		},
 	}
 
-	defaults := map[reflect.Type][]interface{}{
+	defaults := map[reflect.Type][]any{
 		reflect.TypeOf(&Dog{}): {
 			&Dog{Name: "DefaultDog"},
 		},
