@@ -3,8 +3,10 @@ package main
 import (
 	"errors"
 	"log"
+	"os"
 
 	"github.com/nikoksr/konfetty"
+	"github.com/nikoksr/konfetty/examples"
 )
 
 type PizzaConfig struct {
@@ -31,7 +33,6 @@ func main() {
 			Crust: "thin",
 		},
 		Quantity: 1,
-		Delivery: true,
 		Address:  "A-123, 4th Street, New York",
 	}
 
@@ -45,13 +46,11 @@ func main() {
 					Toppings:    []string{"mushrooms"},
 					ExtraCheese: false,
 				},
-				Delivery: true,
 			},
 		).
 		WithTransformer(func(c *OrderConfig) {
-			if c.Pizza.Size == "large" && !c.Pizza.ExtraCheese {
-				c.Pizza.ExtraCheese = true
-				c.Pizza.Toppings = append(c.Pizza.Toppings, "extra cheese")
+			if c.Address != "" {
+				c.Delivery = true
 			}
 		}).
 		WithValidator(func(c *OrderConfig) error {
@@ -67,21 +66,23 @@ func main() {
 
 	// Use the final config as needed...
 
+	examples.PrettyPrint(os.Stdout, cfg)
+
 	// The final config would look like this:
 	//
-	// 	OrderConfig{
-	//   Pizza: PizzaConfig{
-	//     Size:     "medium",
-	//     Crust:    "thin",
-	//     Sauce:    "tomato",
-	//     Cheese:   "mozzarella",
-	//     Toppings: []string{
-	//       "mushrooms",
-	//     },
-	//     ExtraCheese: false,
+	// {
+	//   "Pizza": {
+	//     "Size": "medium",           // Kept original value
+	//     "Crust": "thin",            // Kept original value
+	//     "Sauce": "tomato",          // Applied from defaults
+	//     "Cheese": "mozzarella",     // Applied from defaults
+	//     "Toppings": [
+	//       "mushrooms"
+	//     ],                          // Applied from defaults
+	//     "ExtraCheese": false        // Applied from defaults
 	//   },
-	//   Quantity: 1,
-	//   Delivery: true,
-	//   Address:  "A-123, 4th Street, New York",
+	//   "Quantity": 1,                // Kept original value
+	//   "Delivery": true,             // Applied from transformer
+	//   "Address": "A-123, 4th Street, New York"  // Kept original value
 	// }
 }

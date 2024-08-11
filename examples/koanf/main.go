@@ -3,12 +3,14 @@ package main
 import (
 	"errors"
 	"log"
+	"os"
 
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 
 	"github.com/nikoksr/konfetty"
+	"github.com/nikoksr/konfetty/examples"
 )
 
 type DatabaseConfig struct {
@@ -39,7 +41,7 @@ func main() {
 	//
 
 	k := koanf.New(".")
-	if err := k.Load(file.Provider("../app.config.yaml"), yaml.Parser()); err != nil {
+	if err := k.Load(file.Provider("./app.config.yaml"), yaml.Parser()); err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}
 
@@ -82,20 +84,22 @@ func main() {
 
 	// Use the final config as needed...
 
+	examples.PrettyPrint(os.Stdout, cfg)
+
 	// The final config would look like this:
 	//
-	// 	{
+	// {
 	//   "Database": {
-	//     "Host": "super-secret-database.myapp.com",
-	//     "Port": 5555,
-	//     "Username": "myuser",
-	//     "Password": "mypassword"
+	//     "Host": "super-secret-database.myapp.com",  // Kept original value, loaded by Koanf
+	//     "Port": 5555, 							   // Kept original value, loaded by Koanf
+	//     "Username": "myuser",                       // Kept original value, loaded by Koanf
+	//     "Password": "mypassword"                    // Kept original value, loaded by Koanf
 	//   },
 	//   "Server": {
-	//     "Name": "Procrastination Station",
-	//     "Host": "localhost",
-	//     "Port": 8080
+	//     "Name": "Procrastination Station",          // Set by transformer function
+	//     "Host": "localhost",                        // Kept original value, loaded by Koanf
+	//     "Port": 8080                                // Applied from defaults
 	//   },
-	//   "LogLevel": "info"
+	//   "LogLevel": "info"                            // Applied from defaults
 	// }
 }

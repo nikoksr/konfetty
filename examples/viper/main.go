@@ -3,10 +3,12 @@ package main
 import (
 	"errors"
 	"log"
+	"os"
 
 	"github.com/spf13/viper"
 
 	"github.com/nikoksr/konfetty"
+	"github.com/nikoksr/konfetty/examples"
 )
 
 type DatabaseConfig struct {
@@ -36,7 +38,7 @@ func main() {
 	v := viper.New()
 	v.SetConfigName("app.config")
 	v.SetConfigType("yaml")
-	v.AddConfigPath("..")
+	v.AddConfigPath(".")
 
 	if err := v.ReadInConfig(); err != nil {
 		log.Fatalf("Error reading config file: %v", err)
@@ -78,20 +80,22 @@ func main() {
 
 	// Use the final config as needed...
 
+	examples.PrettyPrint(os.Stdout, cfg)
+
 	// The final config would look like this:
 	//
-	// 	{
+	// {
 	//   "Database": {
-	//     "Host": "super-secret-database.myapp.com",
-	//     "Port": 5555,
-	//     "Username": "myuser",
-	//     "Password": "mypassword"
+	//     "Host": "super-secret-database.myapp.com",  // Kept original value, loaded by Viper
+	//     "Port": 5555,                               // Kept original value, loaded by Viper
+	//     "Username": "myuser",                       // Kept original value, loaded by Viper
+	//     "Password": "mypassword"                    // Kept original value, loaded by Viper
 	//   },
 	//   "Server": {
-	//     "Name": "Procrastination Station",
-	//     "Host": "localhost",
-	//     "Port": 8080
+	//     "Name": "Procrastination Station",          // Set by transformer function
+	//     "Host": "localhost",                        // Kept original value, loaded by Viper
+	//     "Port": 8080                                // Applied from defaults
 	//   },
-	//   "LogLevel": "info"
+	//   "LogLevel": "info"                            // Applied from defaults
 	// }
 }
