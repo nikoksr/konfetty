@@ -28,6 +28,12 @@ Key features:
 
 Konfetty aims to reduce the boilerplate typically associated with setting default values in Go struct hierarchies, allowing developers to focus on their core application logic rather than complex default value management.
 
+## Installation <a id="installation"></a>
+
+```bash
+go get -u github.com/nikoksr/konfetty
+```
+
 ## Quick Start <a id="quick-start"></a>
 
 ```go
@@ -54,7 +60,7 @@ type RoomConfig struct {
 }
 
 func main() {
-	// Stubbing a configuration, usually pre-populated by your config provider.
+	// Stubbing a configuration, usually pre-populated by your config provider, e.g., Viper or Koanf.
     cfg := &RoomConfig{
         Devices: []any{
             // A light device that's enabled by default
@@ -96,40 +102,32 @@ func main() {
 
     // The processed config would look like this:
     //
-    //  &RoomConfig{
-    //      Devices: []any{
-    //          // The first light device stays enabled and was given a brightness of 50
-    //          &LightDevice{
-    //              BaseDevice: BaseDevice{Enabled: true},
-    //              Brightness: 50,
-    //          },
-    //
-    //          // The second light device was disabled and kept the custom brightness of 75
-    //          &LightDevice{
-    //              BaseDevice: BaseDevice{Enabled: false},
-    //              Brightness: 75,
-    //          },
-    //
-    //          // The thermostat device was enabled and given a temperature of 20.0
-    //          &ThermostatDevice{
-    //              BaseDevice: BaseDevice{Enabled: true},
-    //              Temperature: 20.0,
-    //          },
-    //      },
-    //  }
+    // {
+    //   "Devices": [
+    //     {
+    //       // LightDevice
+    //       "Enabled": true,     // Kept original value
+    //       "Brightness": 50     // Used LightDevice default
+    //     },
+    //     {
+    //       // LightDevice
+    //       "Enabled": false,    // Used BaseDevice default
+    //       "Brightness": 75     // Kept original value
+    //     },
+    //     {
+    //       // ThermostatDevice
+    //       "Enabled": true,     // Used ThermostatDevice default, overriding BaseDevice default
+    //       "Temperature": 20.0  // Used ThermostatDevice default
+    //     }
+    //   ]
+    // }
 
     // Continue using your config struct as usual ...
 }
 
 ```
 
-In this example, Konfetty automatically applies the `BaseDevice` defaults to all devices, then overlays the specific defaults for `LightDevice` and `ThermostatDevice`. This happens recursively through the entire `RoomConfig` structure all while maintaining type safety.
-
-## Installation <a id="installation"></a>
-
-```bash
-go get -u github.com/nikoksr/konfetty
-```
+In this example, Konfetty automatically applies the `BaseDevice` defaults to all devices, then overlays the specific defaults for `LightDevice` and `ThermostatDevice`. This happens recursively through the entire `RoomConfig` structure all while maintaining compile-time type safety.
 
 ## How Konfetty Works <a id="how-it-works"></a>
 
