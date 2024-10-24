@@ -4,8 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 
 	"github.com/nikoksr/konfetty"
 )
@@ -21,10 +20,10 @@ func TestFromStruct(t *testing.T) {
 
 	config := &TestConfig{Name: "Alice", Age: 30, IsAdmin: true}
 	processor := konfetty.FromStruct(config)
-
 	result, err := processor.Build()
-	require.NoError(t, err)
-	assert.Equal(t, config, result)
+
+	must.NoError(t, err)
+	must.Eq(t, config, result)
 }
 
 func TestFromLoaderFunc(t *testing.T) {
@@ -36,8 +35,8 @@ func TestFromLoaderFunc(t *testing.T) {
 	processor := konfetty.FromLoaderFunc(loader)
 
 	result, err := processor.Build()
-	require.NoError(t, err)
-	assert.Equal(t, &TestConfig{Name: "Bob", Age: 25, IsAdmin: false}, result)
+	must.NoError(t, err)
+	must.Eq(t, &TestConfig{Name: "Bob", Age: 25, IsAdmin: false}, result)
 }
 
 type MockProvider struct {
@@ -56,8 +55,8 @@ func TestFromProvider(t *testing.T) {
 	processor := konfetty.FromProvider(provider)
 
 	result, err := processor.Build()
-	require.NoError(t, err)
-	assert.Equal(t, &TestConfig{Name: "Charlie", Age: 35, IsAdmin: true}, result)
+	must.NoError(t, err)
+	must.Eq(t, &TestConfig{Name: "Charlie", Age: 35, IsAdmin: true}, result)
 }
 
 func TestWithDefaults(t *testing.T) {
@@ -67,8 +66,8 @@ func TestWithDefaults(t *testing.T) {
 	processor := konfetty.FromStruct(config).WithDefaults(TestConfig{Name: "Default", Age: 18, IsAdmin: false})
 
 	result, err := processor.Build()
-	require.NoError(t, err)
-	assert.Equal(t, &TestConfig{Name: "Default", Age: 18, IsAdmin: false}, result)
+	must.NoError(t, err)
+	must.Eq(t, &TestConfig{Name: "Default", Age: 18, IsAdmin: false}, result)
 }
 
 func TestWithTransformer(t *testing.T) {
@@ -82,8 +81,8 @@ func TestWithTransformer(t *testing.T) {
 	processor := konfetty.FromStruct(config).WithTransformer(transformer)
 
 	result, err := processor.Build()
-	require.NoError(t, err)
-	assert.Equal(t, &TestConfig{Name: "Mr. Dave", Age: 21}, result)
+	must.NoError(t, err)
+	must.Eq(t, &TestConfig{Name: "Mr. Dave", Age: 21}, result)
 }
 
 func TestWithValidator(t *testing.T) {
@@ -99,8 +98,8 @@ func TestWithValidator(t *testing.T) {
 	processor := konfetty.FromStruct(config).WithValidator(validator)
 
 	_, err := processor.Build()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "age must be 18 or older")
+	must.Error(t, err)
+	must.ErrorContains(t, err, "age must be 18 or older")
 }
 
 func TestBuildWithAllOptions(t *testing.T) {
@@ -120,8 +119,8 @@ func TestBuildWithAllOptions(t *testing.T) {
 		})
 
 	result, err := processor.Build()
-	require.NoError(t, err)
-	assert.Equal(t, &TestConfig{Name: "Mr. Default", Age: 18, IsAdmin: false}, result)
+	must.NoError(t, err)
+	must.Eq(t, &TestConfig{Name: "Mr. Default", Age: 18, IsAdmin: false}, result)
 }
 
 func TestBuildErrorCases(t *testing.T) {
@@ -136,8 +135,8 @@ func TestBuildErrorCases(t *testing.T) {
 		processor := konfetty.FromLoaderFunc(loader)
 
 		_, err := processor.Build()
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "loader error")
+		must.Error(t, err)
+		must.ErrorContains(t, err, "loader error")
 	})
 
 	t.Run("ProviderError", func(t *testing.T) {
@@ -147,8 +146,8 @@ func TestBuildErrorCases(t *testing.T) {
 		processor := konfetty.FromProvider(provider)
 
 		_, err := processor.Build()
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "provider error")
+		must.Error(t, err)
+		must.ErrorContains(t, err, "provider error")
 	})
 
 	t.Run("ValidatorError", func(t *testing.T) {
@@ -161,7 +160,7 @@ func TestBuildErrorCases(t *testing.T) {
 		processor := konfetty.FromStruct(config).WithValidator(validator)
 
 		_, err := processor.Build()
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "validator error")
+		must.Error(t, err)
+		must.ErrorContains(t, err, "validator error")
 	})
 }

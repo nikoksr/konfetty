@@ -6,8 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/shoenig/test/must"
 )
 
 func TestApplyDefaults(t *testing.T) {
@@ -96,8 +95,8 @@ func TestApplyDefaultsErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := applyDefaults(tt.config, tt.defaults)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.expected)
+			must.Error(t, err)
+			must.ErrorContains(t, err, tt.expected)
 		})
 	}
 }
@@ -116,8 +115,8 @@ func testBasicTypes(t *testing.T) {
 	}
 
 	err := applyDefaults(config, defaults)
-	require.NoError(t, err)
-	assert.Equal(t, &SimpleStruct{Name: "Default", Age: 30}, config)
+	must.NoError(t, err)
+	must.Eq(t, &SimpleStruct{Name: "Default", Age: 30}, config)
 }
 
 func testNestedAndEmbeddedStructs(t *testing.T) {
@@ -186,8 +185,8 @@ func testNestedAndEmbeddedStructs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := applyDefaults(tt.config, tt.defaults)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, tt.config)
+			must.NoError(t, err)
+			must.Eq(t, tt.expected, tt.config)
 		})
 	}
 }
@@ -262,8 +261,8 @@ func testSlicesAndPointers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := applyDefaults(tt.config, tt.defaults)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, tt.config)
+			must.NoError(t, err)
+			must.Eq(t, tt.expected, tt.config)
 		})
 	}
 }
@@ -284,8 +283,8 @@ func testMultipleDefaults(t *testing.T) {
 	}
 
 	err := applyDefaults(config, defaults)
-	require.NoError(t, err)
-	assert.Equal(t, &SimpleStruct{Name: "Third", Age: 30}, config)
+	must.NoError(t, err)
+	must.Eq(t, &SimpleStruct{Name: "Third", Age: 30}, config)
 }
 
 func testComplexNestedStruct(t *testing.T) {
@@ -342,7 +341,7 @@ func testComplexNestedStruct(t *testing.T) {
 	}
 
 	err := applyDefaults(config, defaults)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	expected := &ComplexStruct{
 		Name:    "DefaultName",
@@ -360,7 +359,7 @@ func testComplexNestedStruct(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, expected, config)
+	must.Eq(t, expected, config)
 }
 
 func testInterfaceSlice(t *testing.T) {
@@ -400,25 +399,25 @@ func testInterfaceSlice(t *testing.T) {
 	}
 
 	err := applyDefaults(config, defaults)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	devices := config.Devices
-	require.Len(t, devices, 3)
+	must.Len(t, 3, devices)
 
 	light1, ok := devices[0].(*LightDevice)
-	require.True(t, ok)
-	assert.True(t, light1.Enabled)
-	assert.Equal(t, 50, light1.Brightness)
+	must.True(t, ok)
+	must.True(t, light1.Enabled)
+	must.Eq(t, 50, light1.Brightness)
 
 	light2, ok := devices[1].(*LightDevice)
-	require.True(t, ok)
-	assert.False(t, light2.Enabled)
-	assert.Equal(t, 75, light2.Brightness)
+	must.True(t, ok)
+	must.False(t, light2.Enabled)
+	must.Eq(t, 75, light2.Brightness)
 
 	thermostat, ok := devices[2].(*ThermostatDevice)
-	require.True(t, ok)
-	assert.True(t, thermostat.Enabled)
-	assert.InEpsilon(t, 20.0, thermostat.Temperature, 0.001)
+	must.True(t, ok)
+	must.True(t, thermostat.Enabled)
+	must.InDelta(t, 20.0, thermostat.Temperature, 0.001)
 }
 
 func testCircularReferences(t *testing.T) {
@@ -439,13 +438,13 @@ func testCircularReferences(t *testing.T) {
 	}
 
 	err := applyDefaults(config, defaults)
-	require.Error(t, err)
-	assert.Equal(t, ErrCircularReference, err)
+	must.Error(t, err)
+	must.Eq(t, ErrCircularReference, err)
 
-	assert.Equal(t, "Start", config.Name)
-	assert.Equal(t, "Middle", config.Next.Name)
-	assert.Equal(t, "Default", config.Next.Next.Name)
-	assert.Equal(t, config, config.Next.Next.Next)
+	must.Eq(t, "Start", config.Name)
+	must.Eq(t, "Middle", config.Next.Name)
+	must.Eq(t, "Default", config.Next.Next.Name)
+	must.Eq(t, config, config.Next.Next.Next)
 }
 
 func testInterfaceFields(t *testing.T) {
@@ -472,17 +471,17 @@ func testInterfaceFields(t *testing.T) {
 	}
 
 	err := applyDefaults(config, defaults)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	concData, ok := config.Data.(*ConcreteType)
-	require.True(t, ok)
-	assert.Equal(t, "default", concData.Value)
+	must.True(t, ok)
+	must.Eq(t, "default", concData.Value)
 
 	nestedContainer, ok := config.NestedContainer.(*InterfaceContainer)
-	require.True(t, ok)
+	must.True(t, ok)
 	nestedData, ok := nestedContainer.Data.(*ConcreteType)
-	require.True(t, ok)
-	assert.Equal(t, "nested", nestedData.Value)
+	must.True(t, ok)
+	must.Eq(t, "nested", nestedData.Value)
 }
 
 func testMaps(t *testing.T) {
@@ -522,14 +521,14 @@ func testMaps(t *testing.T) {
 	}
 
 	err := applyDefaults(config, defaults)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
-	assert.Equal(t, "value", config.StringMap["existing"])
-	assert.Equal(t, "value", config.StringMap["default"])
-	assert.Equal(t, 42, config.IntMap["default"])
-	assert.Equal(t, SimpleStruct{Name: "Alice", Age: 30}, config.StructMap["existing"])
-	assert.Equal(t, SimpleStruct{Name: "DefaultName", Age: 20}, config.StructMap["empty"])
-	assert.Equal(t, SimpleStruct{Name: "Default", Age: 25}, config.StructMap["default"])
+	must.Eq(t, "value", config.StringMap["existing"])
+	must.Eq(t, "value", config.StringMap["default"])
+	must.Eq(t, 42, config.IntMap["default"])
+	must.Eq(t, SimpleStruct{Name: "Alice", Age: 30}, config.StructMap["existing"])
+	must.Eq(t, SimpleStruct{Name: "DefaultName", Age: 20}, config.StructMap["empty"])
+	must.Eq(t, SimpleStruct{Name: "Default", Age: 25}, config.StructMap["default"])
 }
 
 func testEmbeddedStructs(t *testing.T) {
@@ -570,15 +569,15 @@ func testEmbeddedStructs(t *testing.T) {
 	}
 
 	err := applyDefaults(config, defaults)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
 	unexportedValue := reflect.ValueOf(config).Elem().FieldByName("unexportedEmbedded")
 	privateFieldValue := unexportedValue.FieldByName("privateField")
-	assert.Equal(t, "", privateFieldValue.String())
+	must.Eq(t, "", privateFieldValue.String())
 
-	assert.Equal(t, "default level 1", config.Level1Field)
-	assert.Equal(t, 42, config.Level2Field)
-	assert.True(t, config.TopLevelField)
+	must.Eq(t, "default level 1", config.Level1Field)
+	must.Eq(t, 42, config.Level2Field)
+	must.True(t, config.TopLevelField)
 }
 
 type Animal interface {
@@ -623,15 +622,15 @@ func testSlicesOfInterfaces(t *testing.T) {
 	}
 
 	err := applyDefaults(config, defaults)
-	require.NoError(t, err)
+	must.NoError(t, err)
 
-	require.Len(t, config.Animals, 2)
+	must.Len(t, 2, config.Animals)
 
 	dog, ok := config.Animals[0].(*Dog)
-	require.True(t, ok)
-	assert.Equal(t, "Buddy", dog.Name)
+	must.True(t, ok)
+	must.Eq(t, "Buddy", dog.Name)
 
 	cat, ok := config.Animals[1].(*Cat)
-	require.True(t, ok)
-	assert.Equal(t, "DefaultCat", cat.Name)
+	must.True(t, ok)
+	must.Eq(t, "DefaultCat", cat.Name)
 }
