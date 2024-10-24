@@ -1,14 +1,7 @@
 package konfetty
 
 import (
-	"errors"
 	"reflect"
-)
-
-var (
-	ErrCircularReference = errors.New("circular reference detected")
-	ErrNilConfig         = errors.New("config cannot be nil")
-	ErrNotPointer        = errors.New("config must be a pointer to a struct")
 )
 
 // applyDefaults is the entry point for applying default values to the loaded config.
