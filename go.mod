@@ -1,6 +1,6 @@
 module github.com/nikoksr/konfetty
 
-go 1.22.5
+go 1.22
 
 require github.com/shoenig/test v1.11.0
 

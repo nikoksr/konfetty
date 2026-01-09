@@ -109,7 +109,7 @@ func testBasicTypes(t *testing.T) {
 
 	config := &SimpleStruct{Name: "", Age: 0}
 	defaults := map[reflect.Type][]any{
-		reflect.TypeOf(SimpleStruct{}): {
+		reflect.TypeFor[SimpleStruct](): {
 			SimpleStruct{Name: "Default", Age: 30},
 		},
 	}
@@ -132,6 +132,7 @@ func testNestedAndEmbeddedStructs(t *testing.T) {
 
 	type EmbeddedStruct struct {
 		SimpleStruct
+
 		Extra string
 	}
 
@@ -148,10 +149,10 @@ func testNestedAndEmbeddedStructs(t *testing.T) {
 				Value:  0,
 			},
 			defaults: map[reflect.Type][]any{
-				reflect.TypeOf(NestedStruct{}): {
+				reflect.TypeFor[NestedStruct](): {
 					NestedStruct{Value: 3.14},
 				},
-				reflect.TypeOf(SimpleStruct{}): {
+				reflect.TypeFor[SimpleStruct](): {
 					SimpleStruct{Name: "Default", Age: 30},
 				},
 			},
@@ -167,10 +168,10 @@ func testNestedAndEmbeddedStructs(t *testing.T) {
 				Extra:        "",
 			},
 			defaults: map[reflect.Type][]any{
-				reflect.TypeOf(EmbeddedStruct{}): {
+				reflect.TypeFor[EmbeddedStruct](): {
 					EmbeddedStruct{Extra: "ExtraDefault"},
 				},
-				reflect.TypeOf(SimpleStruct{}): {
+				reflect.TypeFor[SimpleStruct](): {
 					SimpleStruct{Name: "Default", Age: 30},
 				},
 			},
@@ -220,7 +221,7 @@ func testSlicesAndPointers(t *testing.T) {
 				},
 			},
 			defaults: map[reflect.Type][]any{
-				reflect.TypeOf(SimpleStruct{}): {
+				reflect.TypeFor[SimpleStruct](): {
 					SimpleStruct{Name: "Default", Age: 30},
 				},
 			},
@@ -237,7 +238,7 @@ func testSlicesAndPointers(t *testing.T) {
 				Ptr: &SimpleStruct{},
 			},
 			defaults: map[reflect.Type][]any{
-				reflect.TypeOf(SimpleStruct{}): {
+				reflect.TypeFor[SimpleStruct](): {
 					SimpleStruct{Name: "Default", Age: 30},
 				},
 			},
@@ -249,7 +250,7 @@ func testSlicesAndPointers(t *testing.T) {
 			name:   "Nil pointer",
 			config: &PointerStruct{},
 			defaults: map[reflect.Type][]any{
-				reflect.TypeOf(SimpleStruct{}): {
+				reflect.TypeFor[SimpleStruct](): {
 					SimpleStruct{Name: "Default", Age: 30},
 				},
 			},
@@ -275,7 +276,7 @@ func testMultipleDefaults(t *testing.T) {
 
 	config := &SimpleStruct{Name: "", Age: 0}
 	defaults := map[reflect.Type][]any{
-		reflect.TypeOf(SimpleStruct{}): {
+		reflect.TypeFor[SimpleStruct](): {
 			SimpleStruct{Name: "First", Age: 10},
 			SimpleStruct{Name: "Second", Age: 20},
 			SimpleStruct{Name: "Third", Age: 30},
@@ -319,7 +320,7 @@ func testComplexNestedStruct(t *testing.T) {
 	}
 
 	defaults := map[reflect.Type][]any{
-		reflect.TypeOf(ComplexStruct{}): {
+		reflect.TypeFor[ComplexStruct](): {
 			ComplexStruct{
 				Name:    "DefaultName",
 				Timeout: 5 * time.Second,
@@ -329,7 +330,7 @@ func testComplexNestedStruct(t *testing.T) {
 				},
 			},
 		},
-		reflect.TypeOf(NestedStruct{}): {
+		reflect.TypeFor[NestedStruct](): {
 			NestedStruct{
 				Simple: struct {
 					Name string
@@ -369,11 +370,13 @@ func testInterfaceSlice(t *testing.T) {
 
 	type LightDevice struct {
 		BaseDevice
+
 		Brightness int
 	}
 
 	type ThermostatDevice struct {
 		BaseDevice
+
 		Temperature float64
 	}
 
@@ -390,9 +393,9 @@ func testInterfaceSlice(t *testing.T) {
 	}
 
 	defaults := map[reflect.Type][]any{
-		reflect.TypeOf(BaseDevice{}):  {BaseDevice{Enabled: false}},
-		reflect.TypeOf(LightDevice{}): {LightDevice{Brightness: 50}},
-		reflect.TypeOf(ThermostatDevice{}): {ThermostatDevice{
+		reflect.TypeFor[BaseDevice]():  {BaseDevice{Enabled: false}},
+		reflect.TypeFor[LightDevice](): {LightDevice{Brightness: 50}},
+		reflect.TypeFor[ThermostatDevice](): {ThermostatDevice{
 			BaseDevice:  BaseDevice{Enabled: true},
 			Temperature: 20.0,
 		}},
@@ -432,7 +435,7 @@ func testCircularReferences(t *testing.T) {
 	config.Next.Next.Next = config
 
 	defaults := map[reflect.Type][]any{
-		reflect.TypeOf(Circular{}): {
+		reflect.TypeFor[Circular](): {
 			Circular{Name: "Default"},
 		},
 	}
@@ -465,7 +468,7 @@ func testInterfaceFields(t *testing.T) {
 	}
 
 	defaults := map[reflect.Type][]any{
-		reflect.TypeOf(ConcreteType{}): {
+		reflect.TypeFor[ConcreteType](): {
 			ConcreteType{Value: "default"},
 		},
 	}
@@ -506,7 +509,7 @@ func testMaps(t *testing.T) {
 	}
 
 	defaults := map[reflect.Type][]any{
-		reflect.TypeOf(Config{}): {
+		reflect.TypeFor[Config](): {
 			Config{
 				StringMap: map[string]string{"default": "value"},
 				IntMap:    map[string]int{"default": 42},
@@ -515,7 +518,7 @@ func testMaps(t *testing.T) {
 				},
 			},
 		},
-		reflect.TypeOf(SimpleStruct{}): {
+		reflect.TypeFor[SimpleStruct](): {
 			SimpleStruct{Name: "DefaultName", Age: 20},
 		},
 	}
@@ -542,28 +545,30 @@ func testEmbeddedStructs(t *testing.T) {
 
 	type EmbeddedLevel2 struct {
 		EmbeddedLevel1
+
 		Level2Field int
 	}
 
 	type Config struct {
 		unexportedEmbedded //nolint:unused // Used for testing that unexported fields don't cause panics
 		EmbeddedLevel2
+
 		TopLevelField bool
 	}
 
 	config := &Config{}
 
 	defaults := map[reflect.Type][]any{
-		reflect.TypeOf(unexportedEmbedded{}): {
+		reflect.TypeFor[unexportedEmbedded](): {
 			unexportedEmbedded{privateField: "default private"},
 		},
-		reflect.TypeOf(EmbeddedLevel1{}): {
+		reflect.TypeFor[EmbeddedLevel1](): {
 			EmbeddedLevel1{Level1Field: "default level 1"},
 		},
-		reflect.TypeOf(EmbeddedLevel2{}): {
+		reflect.TypeFor[EmbeddedLevel2](): {
 			EmbeddedLevel2{Level2Field: 42},
 		},
-		reflect.TypeOf(Config{}): {
+		reflect.TypeFor[Config](): {
 			Config{TopLevelField: true},
 		},
 	}
@@ -613,10 +618,10 @@ func testSlicesOfInterfaces(t *testing.T) {
 	}
 
 	defaults := map[reflect.Type][]any{
-		reflect.TypeOf(&Dog{}): {
+		reflect.TypeFor[*Dog](): {
 			&Dog{Name: "DefaultDog"},
 		},
-		reflect.TypeOf(&Cat{}): {
+		reflect.TypeFor[*Cat](): {
 			&Cat{Name: "DefaultCat"},
 		},
 	}
